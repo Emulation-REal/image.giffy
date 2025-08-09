@@ -3,37 +3,55 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Advanced Particle Simulator</title>
+<title>Advanced Particle Simulator - Fixed UI</title>
 <style>
-  body {
-    margin: 0; overflow: hidden;
-    background-color: #121217;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #0ff;
-    display: flex;
-  }
-  #sidebar {
-    width: 280px;
-    background: #222;
-    padding: 15px;
+  /* Reset and base */
+  * {
     box-sizing: border-box;
-    overflow-y: auto;
-    height: 100vh;
   }
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden; /* no scroll on body */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #121217;
+    color: #0ff;
+  }
+
+  /* Sidebar */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background-color: #222;
+    padding: 15px;
+    overflow-y: auto;
+    border-right: 2px solid #0ff;
+    z-index: 10; /* on top */
+  }
+
   #sidebar h2 {
     margin-top: 0;
     color: #0ff;
     text-align: center;
+    user-select: none;
   }
+
   label {
     display: block;
     margin: 10px 0 4px;
     font-size: 0.9rem;
+    user-select: none;
   }
+
   input[type="range"], select, input[type="color"] {
     width: 100%;
     margin-bottom: 10px;
   }
+
   button {
     background: #0ff;
     border: none;
@@ -44,10 +62,30 @@
     color: #111;
     width: 100%;
     border-radius: 4px;
+    user-select: none;
+    transition: background-color 0.2s ease;
   }
+  button:hover {
+    background: #33ffff;
+  }
+
+  /* Canvas container */
+  #canvas-container {
+    position: fixed;
+    top: 0;
+    left: 280px; /* leave space for sidebar */
+    right: 0;
+    bottom: 0;
+    background-color: #121217;
+    overflow: hidden;
+    z-index: 1;
+  }
+
   canvas {
-    flex: 1;
-    display: block;
+    display: block; /* remove inline spacing */
+    width: 100%;
+    height: 100%;
+    user-select: none;
   }
 </style>
 </head>
@@ -103,11 +141,13 @@
   <button id="resetBtn">Reset</button>
 </div>
 
+<div id="canvas-container"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
 (() => {
-  // Get UI elements
+  // UI elements
   const quantityInput = document.getElementById('quantity');
   const sizeInput = document.getElementById('size');
   const speedInput = document.getElementById('speed');
@@ -120,25 +160,19 @@
   const gradientEndInput = document.getElementById('gradientEnd');
   const pauseBtn = document.getElementById('pauseBtn');
   const resetBtn = document.getElementById('resetBtn');
+  const canvasContainer = document.getElementById('canvas-container');
 
-  // Setup Three.js basics
-  const canvasWidth = window.innerWidth - 280;
-  const canvasHeight = window.innerHeight;
+  // Scene setup
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, canvasWidth / canvasHeight, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/ window.innerHeight, 0.1, 2000);
   camera.position.z = 400;
 
-  const renderer = new THREE.WebGLRenderer({antialias: true});
-  renderer.setSize(canvasWidth, canvasHeight);
+  const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false});
   renderer.setClearColor(0x121217);
-  document.body.appendChild(renderer.domElement);
-  renderer.domElement.style.marginLeft = '280px';
+  renderer.setPixelRatio(window.devicePixelRatio);
+  canvasContainer.appendChild(renderer.domElement);
 
-  // Particle data arrays
-  let particles;
-  let geometry;
-  let material;
-
+  // State vars
   let particleCount = +quantityInput.value;
   let particleSize = +sizeInput.value;
   let particleSpeed = +speedInput.value;
@@ -150,71 +184,78 @@
   let gradientEnd = new THREE.Color(gradientEndInput.value);
   let paused = false;
 
-  // Particle custom data arrays for positions, velocities, ages
-  let positions = new Float32Array(particleCount * 3);
-  let velocities = new Float32Array(particleCount * 3);
-  let ages = new Float32Array(particleCount);
+  // Particle data arrays
+  let positions, velocities, ages, colors;
 
-  // For coloring
-  let colors = new Float32Array(particleCount * 3);
+  // Particle system objects
+  let geometry, material, particles;
 
-  // Mouse tracking
-  let mouse = { x: 0, y: 0 };
-  window.addEventListener('mousemove', e => {
-    mouse.x = e.clientX - 280 - canvasWidth/2;
-    mouse.y = - (e.clientY - canvasHeight/2);
-  });
+  // Mouse state (relative to canvas center)
+  const mouse = { x: 0, y: 0 };
 
-  // Create texture for particle shapes
+  // Resize handler
+  function onResize() {
+    const width = window.innerWidth - 280; // leave sidebar
+    const height = window.innerHeight;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', onResize);
+  onResize();
+
+  // Mouse move relative to canvas center
+  function onMouseMove(e) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left - (rect.width / 2);
+    mouse.y = - (e.clientY - rect.top - (rect.height / 2));
+  }
+  window.addEventListener('mousemove', onMouseMove);
+
+  // Create particle shape texture
   function createParticleTexture(shape) {
     const size = 64;
     const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = size;
+    canvas.width = size;
+    canvas.height = size;
     const ctx = canvas.getContext('2d');
-
     ctx.clearRect(0, 0, size, size);
     ctx.fillStyle = 'white';
 
     if(shape === 'circle') {
       ctx.beginPath();
-      ctx.arc(size/2, size/2, size/3, 0, Math.PI*2);
+      ctx.arc(size/2, size/2, size/3, 0, Math.PI * 2);
       ctx.fill();
     } else if(shape === 'square') {
       const s = size * 0.6;
-      ctx.fillRect((size - s)/2, (size - s)/2, s, s);
+      ctx.fillRect((size - s) / 2, (size - s) / 2, s, s);
     } else if(shape === 'star') {
-      const cx = size/2;
-      const cy = size/2;
+      const cx = size / 2;
+      const cy = size / 2;
       const spikes = 5;
-      const outerRadius = size/3;
-      const innerRadius = size/6;
+      const outerRadius = size / 3;
+      const innerRadius = size / 6;
       let rot = Math.PI / 2 * 3;
-      let x = cx;
-      let y = cy;
       const step = Math.PI / spikes;
-
       ctx.beginPath();
       ctx.moveTo(cx, cy - outerRadius);
-      for(let i = 0; i < spikes; i++) {
-        x = cx + Math.cos(rot) * outerRadius;
-        y = cy + Math.sin(rot) * outerRadius;
+      for (let i = 0; i < spikes; i++) {
+        const x = cx + Math.cos(rot) * outerRadius;
+        const y = cy + Math.sin(rot) * outerRadius;
         ctx.lineTo(x, y);
         rot += step;
-
-        x = cx + Math.cos(rot) * innerRadius;
-        y = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
+        const x2 = cx + Math.cos(rot) * innerRadius;
+        const y2 = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x2, y2);
         rot += step;
       }
-      ctx.lineTo(cx, cy - outerRadius);
       ctx.closePath();
       ctx.fill();
     }
-
     return new THREE.CanvasTexture(canvas);
   }
 
-  // Initialize particles buffers
+  // Initialize particles
   function initParticles() {
     particleCount = +quantityInput.value;
     particleSize = +sizeInput.value;
@@ -231,24 +272,26 @@
     ages = new Float32Array(particleCount);
     colors = new Float32Array(particleCount * 3);
 
-    // Initialize positions, velocities, colors
-    for(let i=0; i<particleCount; i++) {
-      positions[i*3] = (Math.random() - 0.5) * canvasWidth;
-      positions[i*3+1] = (Math.random() - 0.5) * canvasHeight;
-      positions[i*3+2] = 0;
+    const width = window.innerWidth - 280;
+    const height = window.innerHeight;
 
-      velocities[i*3] = (Math.random() - 0.5) * particleSpeed;
-      velocities[i*3+1] = (Math.random() - 0.5) * particleSpeed;
-      velocities[i*3+2] = 0;
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * width;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * height;
+      positions[i * 3 + 2] = 0;
+
+      velocities[i * 3] = (Math.random() - 0.5) * particleSpeed;
+      velocities[i * 3 + 1] = (Math.random() - 0.5) * particleSpeed;
+      velocities[i * 3 + 2] = 0;
 
       ages[i] = Math.random() * particleLifetime;
 
-      colors[i*3] = fixedColor.r;
-      colors[i*3+1] = fixedColor.g;
-      colors[i*3+2] = fixedColor.b;
+      colors[i * 3] = fixedColor.r;
+      colors[i * 3 + 1] = fixedColor.g;
+      colors[i * 3 + 2] = fixedColor.b;
     }
 
-    if(particles) {
+    if (particles) {
       scene.remove(particles);
       geometry.dispose();
       material.dispose();
@@ -272,91 +315,94 @@
     scene.add(particles);
   }
 
-  // Update particle colors based on mode and time
+  // Update colors based on mode and time
   function updateColors(time) {
-    if(colorMode === 'fixed') {
-      for(let i=0; i<particleCount; i++) {
-        colors[i*3] = fixedColor.r;
-        colors[i*3+1] = fixedColor.g;
-        colors[i*3+2] = fixedColor.b;
+    if (colorMode === 'fixed') {
+      for (let i = 0; i < particleCount; i++) {
+        colors[i * 3] = fixedColor.r;
+        colors[i * 3 + 1] = fixedColor.g;
+        colors[i * 3 + 2] = fixedColor.b;
       }
-    } else if(colorMode === 'gradient') {
-      for(let i=0; i<particleCount; i++) {
-        const yNorm = (positions[i*3+1] + canvasHeight/2) / canvasHeight;
-        colors[i*3] = THREE.MathUtils.lerp(gradientStart.r, gradientEnd.r, yNorm);
-        colors[i*3+1] = THREE.MathUtils.lerp(gradientStart.g, gradientEnd.g, yNorm);
-        colors[i*3+2] = THREE.MathUtils.lerp(gradientStart.b, gradientEnd.b, yNorm);
+    } else if (colorMode === 'gradient') {
+      const height = window.innerHeight;
+      for (let i = 0; i < particleCount; i++) {
+        const yNorm = (positions[i * 3 + 1] + height / 2) / height;
+        colors[i * 3] = THREE.MathUtils.lerp(gradientStart.r, gradientEnd.r, yNorm);
+        colors[i * 3 + 1] = THREE.MathUtils.lerp(gradientStart.g, gradientEnd.g, yNorm);
+        colors[i * 3 + 2] = THREE.MathUtils.lerp(gradientStart.b, gradientEnd.b, yNorm);
       }
-    } else if(colorMode === 'rainbow') {
-      for(let i=0; i<particleCount; i++) {
+    } else if (colorMode === 'rainbow') {
+      for (let i = 0; i < particleCount; i++) {
         const hue = ((time * 0.1) + i / particleCount) % 1;
         const color = new THREE.Color();
         color.setHSL(hue, 1, 0.5);
-        colors[i*3] = color.r;
-        colors[i*3+1] = color.g;
-        colors[i*3+2] = color.b;
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
       }
     }
     geometry.attributes.color.needsUpdate = true;
   }
 
-  // Particle physics and interaction
+  // Particle update
   function updateParticles(delta) {
-    for(let i=0; i<particleCount; i++) {
+    const width = window.innerWidth - 280;
+    const height = window.innerHeight;
+
+    for (let i = 0; i < particleCount; i++) {
       ages[i] += delta;
-      if(ages[i] > particleLifetime) {
-        // Respawn particle randomly inside canvas
-        positions[i*3] = (Math.random() - 0.5) * canvasWidth;
-        positions[i*3+1] = (Math.random() - 0.5) * canvasHeight;
-        velocities[i*3] = (Math.random() - 0.5) * particleSpeed;
-        velocities[i*3+1] = (Math.random() - 0.5) * particleSpeed;
+      if (ages[i] > particleLifetime) {
+        // Respawn
+        positions[i * 3] = (Math.random() - 0.5) * width;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * height;
+        velocities[i * 3] = (Math.random() - 0.5) * particleSpeed;
+        velocities[i * 3 + 1] = (Math.random() - 0.5) * particleSpeed;
         ages[i] = 0;
       }
 
-      const dx = mouse.x - positions[i*3];
-      const dy = mouse.y - positions[i*3+1];
-      const dist = Math.sqrt(dx*dx + dy*dy);
+      const dx = mouse.x - positions[i * 3];
+      const dy = mouse.y - positions[i * 3 + 1];
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if(interactionMode !== 'static' && dist < 150 && dist > 0) {
+      if (interactionMode !== 'static' && dist < 150 && dist > 0) {
         const nx = dx / dist;
         const ny = dy / dist;
-        switch(interactionMode) {
+
+        switch (interactionMode) {
           case 'attract':
-            velocities[i*3] += nx * delta * 50;
-            velocities[i*3+1] += ny * delta * 50;
+            velocities[i * 3] += nx * delta * 50;
+            velocities[i * 3 + 1] += ny * delta * 50;
             break;
           case 'repel':
-            velocities[i*3] -= nx * delta * 50;
-            velocities[i*3+1] -= ny * delta * 50;
+            velocities[i * 3] -= nx * delta * 50;
+            velocities[i * 3 + 1] -= ny * delta * 50;
             break;
           case 'swirl':
-            velocities[i*3] += ny * delta * 50;
-            velocities[i*3+1] -= nx * delta * 50;
+            velocities[i * 3] += ny * delta * 50;
+            velocities[i * 3 + 1] -= nx * delta * 50;
             break;
         }
       }
 
-      // Simple friction
-      velocities[i*3] *= 0.95;
-      velocities[i*3+1] *= 0.95;
+      velocities[i * 3] *= 0.95;
+      velocities[i * 3 + 1] *= 0.95;
 
-      // Update positions
-      positions[i*3] += velocities[i*3] * delta * 60;
-      positions[i*3+1] += velocities[i*3+1] * delta * 60;
+      positions[i * 3] += velocities[i * 3] * delta * 60;
+      positions[i * 3 + 1] += velocities[i * 3 + 1] * delta * 60;
 
-      // Wrap around edges
-      if(positions[i*3] < -canvasWidth/2) positions[i*3] += canvasWidth;
-      if(positions[i*3] > canvasWidth/2) positions[i*3] -= canvasWidth;
-      if(positions[i*3+1] < -canvasHeight/2) positions[i*3+1] += canvasHeight;
-      if(positions[i*3+1] > canvasHeight/2) positions[i*3+1] -= canvasHeight;
+      if (positions[i * 3] < -width / 2) positions[i * 3] += width;
+      if (positions[i * 3] > width / 2) positions[i * 3] -= width;
+      if (positions[i * 3 + 1] < -height / 2) positions[i * 3 + 1] += height;
+      if (positions[i * 3 + 1] > height / 2) positions[i * 3 + 1] -= height;
     }
     geometry.attributes.position.needsUpdate = true;
   }
 
+  // Animation loop
   let lastTime = performance.now();
 
   function animate() {
-    if(!paused) {
+    if (!paused) {
       const now = performance.now();
       const delta = (now - lastTime) / 1000;
       lastTime = now;
@@ -368,11 +414,11 @@
     requestAnimationFrame(animate);
   }
 
-  // UI event listeners
+  // UI event bindings
   quantityInput.addEventListener('input', initParticles);
   sizeInput.addEventListener('input', () => {
     particleSize = +sizeInput.value;
-    if(material) material.size = particleSize;
+    if (material) material.size = particleSize;
   });
   speedInput.addEventListener('input', () => {
     particleSpeed = +speedInput.value;
@@ -396,35 +442,25 @@
     gradientEnd.set(gradientEndInput.value);
   });
   shapeSelect.addEventListener('change', () => {
-    if(material) {
+    if (material) {
       material.map = createParticleTexture(shapeSelect.value);
       material.needsUpdate = true;
     }
   });
-
   pauseBtn.addEventListener('click', () => {
     paused = !paused;
     pauseBtn.textContent = paused ? 'Resume' : 'Pause';
   });
-
   resetBtn.addEventListener('click', () => {
     initParticles();
   });
 
-  // Handle window resize
-  window.addEventListener('resize', () => {
-    const newWidth = window.innerWidth - 280;
-    const newHeight = window.innerHeight;
-    renderer.setSize(newWidth, newHeight);
-    camera.aspect = newWidth / newHeight;
-    camera.updateProjectionMatrix();
-  });
-
-  // Initialize and start
+  // Init & start animation
   initParticles();
   animate();
 
 })();
 </script>
+
 </body>
 </html>
