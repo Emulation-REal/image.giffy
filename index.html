@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Advanced Particle Simulator</title>
+<style>
+  body, html {
+    margin: 0; padding: 0; overflow: hidden;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #121212;
+    color: #eee;
+    user-select: none;
+    height: 100vh;
+  }
+
+  #sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 320px;
+    height: 100vh;
+    background: #222;
+    padding: 15px 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    border-right: 2px solid #444;
+    scrollbar-width: thin;
+    scrollbar-color: #555 #222;
+    z-index: 1000;
+  }
+  #sidebar::-webkit-scrollbar {
+    width: 8px;
+  }
+  #sidebar::-webkit-scrollbar-track {
+    background: #222;
+  }
+  #sidebar::-webkit-scrollbar-thumb {
+    background-color: #555;
+    border-radius: 4px;
+  }
+
+  label {
+    display: block;
+    margin: 12px 0 6px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  select, input[type=range], input[type=color] {
+    width: 100%;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+
+  button.preset {
+    background: #444;
+    border: none;
+    border-radius: 5px;
+    color: #eee;
+    padding: 8px 12px;
+    margin: 6px 6px 6px 0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  button.preset:hover {
+    background: #666;
+  }
+
+  canvas#customShapeCanvas {
+    border: 1px solid #555;
+    display: block;
+    margin: 10px 0;
+    width: 100%;
+    height: 120px;
+    touch-action: none;
+    background: #111;
+  }
+
+  #fpsCounter {
+    position: fixed;
+    bottom: 8px;
+    left: 330px;
+    color: #aaa;
+    font-family: monospace;
+    font-weight: 700;
+    user-select: none;
+    z-index: 1001;
+    font-size: 14px;
+    text-shadow: 0 0 5px black;
+  }
+
+  #webglCanvas {
+    position: fixed;
+    top: 0; left: 320px;
+    width: calc(100vw - 320px);
+    height: 100vh;
+    display: block;
+    background: #000;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2 style="margin-top:0; margin-bottom:15px; text-align:center;">Particle Simulator Settings</h2>
+
+  <label for="quantityRange">Quantity (<span id="quantityLabel">1000</span>)</label>
+  <input type="range" id="quantityRange" min="100" max="15000" step="100" value="1000" />
+
+  <label for="sizeRange">Size (<span id="sizeLabel">3</span>)</label>
+  <input type="range" id="sizeRange" min="0.5" max="10" step="0.1" value="3" />
+
+  <label for="speedRange">Speed (<span id="speedLabel">2</span>)</label>
+  <input type="range" id="speedRange" min="0" max="15" step="0.1" value="2" />
+
+  <label for="lifeSpanRange">Lifespan (seconds) (<span id="lifeSpanLabel">10</span>)</label>
+  <input type="range" id="lifeSpanRange" min="1" max="30" step="1" value="10" />
+
+  <label for="shapeSelect">Particle Shape</label>
+  <select id="shapeSelect">
+    <option value="circle" selected>Circle</option>
+    <option value="triangle">Triangle</option>
+    <option value="star">Star</option>
+    <option value="heart">Heart</option>
+    <option value="custom">Custom (draw below)</option>
+  </select>
+
+  <div id="customShapeSection" style="display:none;">
+    <canvas id="customShapeCanvas" width="128" height="128" title="Draw your custom particle shape here"></canvas>
+    <button id="clearCustomShapeBtn" style="width:100%; background:#555; border:none; color:#eee; cursor:pointer; border-radius:4px;">Clear Custom Shape</button>
+  </div>
+
+  <label for="colorModeSelect">Color Mode</label>
+  <select id="colorModeSelect">
+    <option value="random" selected>Random Pastel</option>
+    <option value="gradient">Gradient (Vertical)</option>
+    <option value="fixed">Fixed Color</option>
+    <option value="rainbow">Rainbow Cycle</option>
+    <option value="soundReactive">Sound Reactive (Mic)</option>
+  </select>
+
+  <input type="color" id="fixedColorPicker" value="#ff00ff" style="display:none; margin-bottom: 12px;" />
+
+  <label for="gradientStart">Gradient Start Color</label>
+  <input type="color" id="gradientStart" value="#00ffff" />
+
+  <label for="gradientEnd">Gradient End Color</label>
+  <input type="color" id="gradientEnd" value="#ff00ff" />
+
+  <label for="interactionSelect">Interaction Mode</label>
+  <select id="interactionSelect">
+    <option value="static" selected>Static</option>
+    <option value="repel">Repel</option>
+    <option value="attract">Attract</option>
+    <option value="swirl">Swirl</option>
+    <option value="explosion">Explosion (Click)</option>
+  </select>
+
+  <label for="interactionRadiusRange">Interaction Radius (<span id="interactionRadiusLabel">150</span>)</label>
+  <input type="range" id="interactionRadiusRange" min="50" max="500" step="10" value="150" />
+
+  <label><input type="checkbox" id="trailToggle" checked /> Enable Motion Trails (Additive Blend)</label>
+
+  <label><input type="checkbox" id="enableSound" /> Enable Microphone for Sound Reactive</label>
+
+  <div style="margin-top:20px; text-align:center;">
+    <button class="preset" data-preset="calm">Calm</button>
+    <button class="preset" data-preset="storm">Storm</button>
+    <button class="preset" data-preset="neon">Neon</button>
+    <button class="preset" data-preset="fireworks">Fireworks</button>
+  </div>
+  
+  <div style="margin-top: 25px; font-size: 12px; color: #777; text-align:center;">
+    Press <b>H</b> to toggle this menu<br/>
+    Press <b>R</b> to reset particles
+  </div>
+</div>
+
+<canvas id="webglCanvas"></canvas>
+<div id="fpsCounter">FPS: 0</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
+
+<script>
+(() => {
+  // DOM elements
+  const quantityRange = document.getElementById('quantityRange');
+  const quantityLabel = document.getElementById('quantityLabel');
+  const sizeRange = document.getElementById('sizeRange');
+  const sizeLabel = document.getElementById('sizeLabel');
+  const speedRange = document.getElementById('speedRange');
+  const speedLabel = document.getElementById('speedLabel');
+  const lifeSpanRange = document.getElementById('lifeSpanRange');
+  const lifeSpanLabel = document.getElementById('lifeSpanLabel');
+  const shapeSelect = document.getElementById('shapeSelect');
+  const colorModeSelect = document.getElementById('colorModeSelect');
+  const fixedColorPicker = document.getElementById('fixedColorPicker');
+  const gradientStart = document.getElementById('gradientStart');
+  const gradientEnd = document.getElementById('gradientEnd');
+  const interactionSelect = document.getElementById('interactionSelect');
+  const interactionRadiusRange = document.getElementById('interactionRadiusRange');
+  const interactionRadiusLabel = document.getElementById('interactionRadiusLabel');
+  const trailToggle = document.getElementById('trailToggle');
+  const enableSound = document.getElementById('enableSound');
+  const customShapeSection = document.getElementById('customShapeSection');
+  const customShapeCanvas = document.getElementById('customShapeCanvas');
+  const clearCustomShapeBtn = document.getElementById('clearCustomShapeBtn');
+  const fpsCounter = document.getElementById('fpsCounter');
+
+  // Three.js setup
+  const canvas = document.getElementById('webglCanvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth - 320, window.innerHeight);
+  renderer.setClearColor(0x000000, 0); // transparent bg to see black
+
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 320) / window.innerHeight, 1, 2000);
+  camera.position.z = 800;
+
+  // Particle system variables
+  let particleCount = parseInt(quantityRange.value);
+  const maxParticleCount = 20000;
+
+  let positions, velocities, colors, sizes, lifetimes, ages;
+  let particleGeometry, particleMaterial, particlePoints;
+
+  // For sound reactive
+  let soundEnabled = false;
+  let audioContext, analyser, dataArray, source;
+
+  // For custom shape drawing
+  const customCtx = customShapeCanvas.getContext('2d');
+  let customShapeTexture = null;
+
+  // Interaction variables
+  let mouse = { x: 0, y: 0 };
+  let interactionRadius = parseInt(interactionRadiusRange.value);
+
+  // Shaders for particles
+  const vertexShader = `
+    attribute float size;
+    attribute vec3 customColor;
+    varying vec3 vColor;
+    void main() {
+      vColor = customColor;
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = size * (300.0 / -mvPosition.z);
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `;
+
+  const fragmentShader = `
+    uniform sampler2D pointTexture;
+    varying vec3 vColor;
+    void main() {
+      vec4 texColor = texture2D(pointTexture, gl_PointCoord);
+      if(texColor.a < 0.1) discard;
+      gl_FragColor = vec4(vColor, 1.0) * texColor;
+    }
+  `;
+
+  // Utility: hex to normalized rgb object
+  function hexToRgb(hex) {
+    let bigint = parseInt(hex.replace('#',''), 16);
+    let r = ((bigint >> 16) & 255) / 255;
+    let g = ((bigint >> 8) & 255) / 255;
+    let b = (bigint & 255) / 255;
+    return {r,g,b};
+  }
+
+  // Linear interpolate
+  function lerp(a,b,t) { return a + (b - a)*t; }
+
+  // HSV to RGB normalized
+  function hsvToRgb(h, s, v) {
+    let c = v * s;
+    let x = c * (1 - Math.abs(((h/60) % 2) - 1));
+    let m = v - c;
+    let r=0, g=0, b=0;
+    if(h < 60) {r=c; g=x; b=0;}
+    else if(h < 120) {r=x; g=c; b=0;}
+    else if(h < 180) {r=0; g=c; b=x;}
+    else if(h < 240) {r=0; g=x; b=c;}
+    else if(h < 300) {r=x; g=0; b=c;}
+    else {r=c; g=0; b=x;}
+    return {r: r+m, g: g+m, b: b+m};
+  }
+
+  // Particle texture creator
+  function createParticleTexture(shape) {
+    const size = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    ctx.clearRect(0, 0, size, size);
+
+    if(shape === 'circle') {
+      const gradient = ctx.createRadialGradient(size/2, size/2, size/8, size/2, size/2, size/2);
+      gradient.addColorStop(0, 'rgba(255,255,255,1)');
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size/2.2, 0, Math.PI*2);
+      ctx.fill();
+    }
+    else if(shape === 'triangle') {
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.moveTo(size/2, size/6);
+      ctx.lineTo(size*5/6, size*5/6);
+      ctx.lineTo(size/6, size*5/6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    else if(shape === 'star') {
+      const cx = size/2;
+      const cy = size/2;
+      const spikes = 5;
+      const outerRadius = size/2.5;
+      const innerRadius = size/5;
+      let rot = Math.PI / 2 * 3;
+      let x = cx;
+      let y = cy;
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      for(let i=0; i<spikes; i++){
+        x = cx + Math.cos(rot) * outerRadius;
+        y = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(x, y);
+        rot += Math.PI / spikes;
+
+        x = cx + Math.cos(rot) * innerRadius;
+        y = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x, y);
+        rot += Math.PI / spikes;
+      }
+      ctx.lineTo(cx, cy - outerRadius);
+      ctx.closePath();
+      ctx.fill();
+    }
+    else if(shape === 'heart') {
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      let topCurveHeight = size * 0.3;
+      ctx.moveTo(size/2, size/5);
+      ctx.bezierCurveTo(size/2, size/5 - topCurveHeight, size/6, size/5 - topCurveHeight, size/6, size/2.5);
+      ctx.bezierCurveTo(size/6, size*0.75, size/2, size*0.9, size/2, size*1);
+      ctx.bezierCurveTo(size/2, size*0.9, size*5/6, size*0.75, size*5/6, size/2.5);
+      ctx.bezierCurveTo(size*5/6, size/5 - topCurveHeight, size/2, size/5 - topCurveHeight, size/2, size/5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    else if(shape === 'custom' && customShapeTexture) {
+      return customShapeTexture;
+    }
+    else {
+      // fallback circle
+      return createParticleTexture('circle');
+    }
+
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  // Particle system init
+  function initParticles() {
+    particleCount = Math.min(parseInt(quantityRange.value), maxParticleCount);
+
+    if(particlePoints) {
+      scene.remove(particlePoints);
+      particleGeometry.dispose();
+      particleMaterial.dispose();
+    }
+
+    particleGeometry = new THREE.BufferGeometry();
+
+    positions = new Float32Array(particleCount * 3);
+    velocities = new Float32Array(particleCount * 3);
+    colors = new Float32Array(particleCount * 3);
+    sizes = new Float32Array(particleCount);
+    lifetimes = new Float32Array(particleCount);
+    ages = new Float32Array(particleCount);
+
+    const speedBase = parseFloat(speedRange.value);
+    const sizeBase = parseFloat(sizeRange.value);
+    const lifeSpanVal = parseFloat(lifeSpanRange.value);
+
+    for(let i=0; i<particleCount; i++) {
+      positions[i*3] = (Math.random() - 0.5) * (window.innerWidth - 320);
+      positions[i*3+1] = (Math.random() - 0.5) * window.innerHeight;
+      positions[i*3+2] = (Math.random() - 0.5) * 400;
+
+      const angle = Math.random() * Math.PI * 2;
+      const speedVar = speedBase * 0.5 * Math.random();
+      velocities[i*3] = Math.cos(angle) * (speedBase + speedVar);
+      velocities[i*3+1] = Math.sin(angle) * (speedBase + speedVar);
+      velocities[i*3+2] = (Math.random() - 0.5) * speedBase * 0.3;
+
+      colors[i*3] = 1;
+      colors[i*3+1] = 1;
+      colors[i*3+2] = 1;
+
+      sizes[i] = sizeBase * (0.7 + 0.6 * Math.random());
+
+      lifetimes[i] = lifeSpanVal;
+      ages[i] = Math.random() * lifetimes[i];
+    }
+
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeometry.setAttribute('customColor', new THREE.BufferAttribute(colors, 3));
+    particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    // Load particle texture
+    let texture;
+    if(shapeSelect.value === 'custom' && customShapeTexture) {
+      texture = customShapeTexture;
+    } else {
+      texture = createParticleTexture(shapeSelect.value);
+    }
+
+    particleMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        pointTexture: { value: texture }
+      },
+      vertexShader,
+      fragmentShader,
+      transparent: true,
+      blending: trailToggle.checked ? THREE.AdditiveBlending : THREE.NormalBlending,
+      depthTest: false,
+      depthWrite: false,
+      vertexColors: true
+    });
+
+    particlePoints = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particlePoints);
+  }
+
+  // Variables for animation loop
+  let lastTime = performance.now();
+  let fpsFrames = 0;
+  let fpsTime = 0;
+
+  // Interaction helpers
+  function updateParticles(delta) {
+    const width = window.innerWidth - 320;
+    const height = window.innerHeight;
+
+    const ir = parseInt(interactionRadiusRange.value);
+    interactionRadius = ir;
+
+    for(let i=0; i<particleCount; i++) {
+      ages[i] += delta;
+      if(ages[i] >= lifetimes[i]) {
+        // Respawn particle
+        positions[i*3] = (Math.random() - 0.5) * width;
+        positions[i*3+1] = (Math.random() - 0.5) * height;
+        positions[i*3+2] = (Math.random() - 0.5) * 400;
+
+        const angle = Math.random() * Math.PI * 2;
+        const speedBase = parseFloat(speedRange.value);
+        const speedVar = speedBase * 0.5 * Math.random();
+
+        velocities[i*3] = Math.cos(angle) * (speedBase + speedVar);
+        velocities[i*3+1] = Math.sin(angle) * (speedBase + speedVar);
+        velocities[i*3+2] = (Math.random() - 0.5) * speedBase * 0.3;
+
+        ages[i] = 0;
+        lifetimes[i] = parseFloat(lifeSpanRange.value);
+      }
+
+      // Interaction modes
+      const ix = mouse.x - positions[i*3];
+      const iy = mouse.y - positions[i*3+1];
+      const iz = 0 - positions[i*3+2];
+      const distSq = ix*ix + iy*iy + iz*iz;
+
+      let speedFactor = parseFloat(speedRange.value);
+      if(interactionSelect.value !== 'static' && distSq < ir*ir) {
+        const dist = Math.sqrt(distSq) || 1;
+        const forceDirX = ix / dist;
+        const forceDirY = iy / dist;
+        const forceDirZ = iz / dist;
+        const forceMag = (ir - dist) * 0.5;
+
+        if(interactionSelect.value === 'repel') {
+          velocities[i*3] -= forceDirX * forceMag * delta * 60;
+          velocities[i*3+1] -= forceDirY * forceMag * delta * 60;
+          velocities[i*3+2] -= forceDirZ * forceMag * delta * 60;
+        }
+        else if(interactionSelect.value === 'attract') {
+          velocities[i*3] += forceDirX * forceMag * delta * 60;
+          velocities[i*3+1] += forceDirY * forceMag * delta * 60;
+          velocities[i*3+2] += forceDirZ * forceMag * delta * 60;
+        }
+        else if(interactionSelect.value === 'swirl') {
+          // Apply perpendicular force for swirl
+          velocities[i*3] += forceDirY * forceMag * delta * 30;
+          velocities[i*3+1] -= forceDirX * forceMag * delta * 30;
+          // Z velocity unchanged for swirl
+        }
+      }
+
+      // Update positions by velocity scaled by delta time
+      positions[i*3] += velocities[i*3] * delta * 60;
+      positions[i*3+1] += velocities[i*3+1] * delta * 60;
+      positions[i*3+2] += velocities[i*3+2] * delta * 60;
+
+      // Wrap-around edges for X/Y/Z
+      if(positions[i*3] > width/2) positions[i*3] = -width/2;
+      else if(positions[i*3] < -width/2) positions[i*3] = width/2;
+
+      if(positions[i*3+1] > height/2) positions[i*3+1] = -height/2;
+      else if(positions[i*3+1] < -height/2) positions[i*3+1] = height/2;
+
+      if(positions[i*3+2] > 200) positions[i*3+2] = -200;
+      else if(positions[i*3+2] < -200) positions[i*3+2] = 200;
+    }
+  }
+
+  // Color update helpers
+  let hueCycle = 0;
+
+  function updateColors(delta) {
+    const mode = colorModeSelect.value;
+    if(mode === 'fixed') {
+      const col = hexToRgb(fixedColorPicker.value);
+      for(let i=0; i<particleCount; i++) {
+        colors[i*3] = col.r;
+        colors[i*3+1] = col.g;
+        colors[i*3+2] = col.b;
+      }
+    }
+    else if(mode === 'random') {
+      // Pastel random
+      for(let i=0; i<particleCount; i++) {
+        colors[i*3] = 0.7 + 0.3*Math.random();
+        colors[i*3+1] = 0.7 + 0.3*Math.random();
+        colors[i*3+2] = 0.7 + 0.3*Math.random();
+      }
+    }
+    else if(mode === 'gradient') {
+      // Vertical gradient based on y pos
+      const colStart = hexToRgb(gradientStart.value);
+      const colEnd = hexToRgb(gradientEnd.value);
+      const height = window.innerHeight;
+      for(let i=0; i<particleCount; i++) {
+        let t = (positions[i*3+1] + height/2) / height;
+        colors[i*3] = lerp(colStart.r, colEnd.r, t);
+        colors[i*3+1] = lerp(colStart.g, colEnd.g, t);
+        colors[i*3+2] = lerp(colStart.b, colEnd.b, t);
+      }
+    }
+    else if(mode === 'rainbow') {
+      hueCycle += delta * 60;
+      if(hueCycle > 360) hueCycle -= 360;
+      for(let i=0; i<particleCount; i++) {
+        const h = (hueCycle + (i / particleCount) * 360) % 360;
+        const col = hsvToRgb(h, 1, 1);
+        colors[i*3] = col.r;
+        colors[i*3+1] = col.g;
+        colors[i*3+2] = col.b;
+      }
+    }
+    else if(mode === 'soundReactive' && soundEnabled && analyser && dataArray) {
+      analyser.getByteFrequencyData(dataArray);
+      let avg = 0;
+      for(let i=0; i<dataArray.length; i++) {
+        avg += dataArray[i];
+      }
+      avg /= dataArray.length;
+      const intensity = avg / 255;
+      for(let i=0; i<particleCount; i++) {
+        const h = (hueCycle + i) % 360;
+        const col = hsvToRgb(h, 1, intensity);
+        colors[i*3] = col.r;
+        colors[i*3+1] = col.g;
+        colors[i*3+2] = col.b;
+      }
+      hueCycle += delta * 100;
+      if(hueCycle > 360) hueCycle -= 360;
+    }
+
+    particleGeometry.attributes.customColor.needsUpdate = true;
+  }
+
+  // Event listeners for UI
+
+  quantityRange.addEventListener('input', () => {
+    quantityLabel.textContent = quantityRange.value;
+  });
+  sizeRange.addEventListener('input', () => {
+    sizeLabel.textContent = sizeRange.value;
+  });
+  speedRange.addEventListener('input', () => {
+    speedLabel.textContent = speedRange.value;
+  });
+  lifeSpanRange.addEventListener('input', () => {
+    lifeSpanLabel.textContent = lifeSpanRange.value;
+  });
+  interactionRadiusRange.addEventListener('input', () => {
+    interactionRadiusLabel.textContent = interactionRadiusRange.value;
+  });
+
+  shapeSelect.addEventListener('change', () => {
+    customShapeSection.style.display = (shapeSelect.value === 'custom') ? 'block' : 'none';
+    initParticles();
+  });
+
+  colorModeSelect.addEventListener('change', () => {
+    fixedColorPicker.style.display = (colorModeSelect.value === 'fixed') ? 'block' : 'none';
+    const gradVis = (colorModeSelect.value === 'gradient');
+    gradientStart.parentElement.style.display = gradVis ? 'block' : 'none';
+    gradientEnd.parentElement.style.display = gradVis ? 'block' : 'none';
+
+    if(colorModeSelect.value === 'soundReactive') {
+      enableSound.checked = true;
+      enableSoundReactive();
+    } else {
+      if(soundEnabled) disableSoundReactive();
+      enableSound.checked = false;
+    }
+  });
+
+  fixedColorPicker.addEventListener('input', () => {
+    updateColors(0);
+  });
+  gradientStart.addEventListener('input', () => {
+    updateColors(0);
+  });
+  gradientEnd.addEventListener('input', () => {
+    updateColors(0);
+  });
+
+  interactionSelect.addEventListener('change', () => {
+    // No special UI changes needed
+  });
+
+  trailToggle.addEventListener('change', () => {
+    if(particleMaterial) {
+      particleMaterial.blending = trailToggle.checked ? THREE.AdditiveBlending : THREE.NormalBlending;
+      particleMaterial.needsUpdate = true;
+    }
+  });
+
+  enableSound.addEventListener('change', () => {
+    if(enableSound.checked) {
+      enableSoundReactive();
+    } else {
+      disableSoundReactive();
+    }
+  });
+
+  // Custom shape drawing
+  let drawing = false;
+  let lastPos = null;
+
+  function clearCustomShape() {
+    customCtx.clearRect(0, 0, customShapeCanvas.width, customShapeCanvas.height);
+    customShapeTexture = new THREE.Texture(customShapeCanvas);
+    customShapeTexture.needsUpdate = true;
+    initParticles();
+  }
+  clearCustomShapeBtn.addEventListener('click', () => {
+    clearCustomShape();
+  });
+
+  function getMousePosCanvas(e) {
+    const rect = customShapeCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left);
+    const y = (e.clientY - rect.top);
+    return {x, y};
+  }
+
+  customShapeCanvas.addEventListener('pointerdown', (e) => {
+    if(shapeSelect.value !== 'custom') return;
+    drawing = true;
+    lastPos = getMousePosCanvas(e);
+  });
+
+  customShapeCanvas.addEventListener('pointermove', (e) => {
+    if(!drawing) return;
+    const pos = getMousePosCanvas(e);
+    customCtx.strokeStyle = 'white';
+    customCtx.lineWidth = 4;
+    customCtx.lineCap = 'round';
+    customCtx.beginPath();
+    customCtx.moveTo(lastPos.x, lastPos.y);
+    customCtx.lineTo(pos.x, pos.y);
+    customCtx.stroke();
+    lastPos = pos;
+    customShapeTexture = new THREE.Texture(customShapeCanvas);
+    customShapeTexture.needsUpdate = true;
+    initParticles();
+  });
+
+  customShapeCanvas.addEventListener('pointerup', () => {
+    drawing = false;
+  });
+  customShapeCanvas.addEventListener('pointerleave', () => {
+    drawing = false;
+  });
+
+  // Mouse interaction for particle attract/repel etc
+  function onMouseMove(e) {
+    mouse.x = e.clientX - 320 - (window.innerWidth - 320)/2;
+    mouse.y = - (e.clientY - window.innerHeight/2);
+  }
+  window.addEventListener('mousemove', onMouseMove);
+
+  // Explosion interaction on click
+  window.addEventListener('click', (e) => {
+    if(interactionSelect.value !== 'explosion') return;
+    const cx = e.clientX - 320 - (window.innerWidth - 320)/2;
+    const cy = - (e.clientY - window.innerHeight/2);
+    const explosionRadius = parseInt(interactionRadiusRange.value);
+    for(let i=0; i<particleCount; i++) {
+      let dx = positions[i*3] - cx;
+      let dy = positions[i*3+1] - cy;
+      let dz = positions[i*3+2];
+      let distSq = dx*dx + dy*dy + dz*dz;
+      if(distSq < explosionRadius*explosionRadius) {
+        let dist = Math.sqrt(distSq) || 1;
+        let forceDirX = dx / dist;
+        let forceDirY = dy / dist;
+        let forceDirZ = dz / dist;
+        const forceMag = (explosionRadius - dist) * 3;
+        velocities[i*3] += forceDirX * forceMag;
+        velocities[i*3+1] += forceDirY * forceMag;
+        velocities[i*3+2] += forceDirZ * forceMag;
+      }
+    }
+  });
+
+  // Sound reactive functions
+  async function enableSoundReactive() {
+    if(soundEnabled) return;
+    soundEnabled = true;
+    try {
+      audioContext = new AudioContext();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      source.connect(analyser);
+      enableSound.checked = true;
+      colorModeSelect.value = 'soundReactive';
+      fixedColorPicker.style.display = 'none';
+      gradientStart.parentElement.style.display = 'none';
+      gradientEnd.parentElement.style.display = 'none';
+    } catch(e) {
+      alert('Microphone access denied or unavailable.');
+      enableSound.checked = false;
+      soundEnabled = false;
+    }
+  }
+
+  function disableSoundReactive() {
+    soundEnabled = false;
+    if(source) source.disconnect();
+    if(analyser) analyser.disconnect();
+    if(audioContext) audioContext.close();
+    enableSound.checked = false;
+    colorModeSelect.value = 'random';
+    fixedColorPicker.style.display = 'none';
+    gradientStart.parentElement.style.display = 'block';
+    gradientEnd.parentElement.style.display = 'block';
+  }
+
+  // Presets
+  const presets = {
+    calm: () => {
+      quantityRange.value = 4000; quantityLabel.textContent = 4000;
+      sizeRange.value = 3; sizeLabel.textContent = 3;
+      speedRange.value = 1.5; speedLabel.textContent = 1.5;
+      lifeSpanRange.value = 15; lifeSpanLabel.textContent = 15;
+      shapeSelect.value = 'circle';
+      colorModeSelect.value = 'gradient';
+      gradientStart.value = '#00ffff';
+      gradientEnd.value = '#ff00ff';
+      interactionSelect.value = 'attract';
+      interactionRadiusRange.value = 150; interactionRadiusLabel.textContent = 150;
+      trailToggle.checked = true;
+      enableSound.checked = false;
+      updateUI();
+      initParticles();
+    },
+    storm: () => {
+      quantityRange.value = 15000; quantityLabel.textContent = 15000;
+      sizeRange.value = 1.5; sizeLabel.textContent = 1.5;
+      speedRange.value = 10; speedLabel.textContent = 10;
+      lifeSpanRange.value = 8; lifeSpanLabel.textContent = 8;
+      shapeSelect.value = 'triangle';
+      colorModeSelect.value = 'random';
+      interactionSelect.value = 'repel';
+      interactionRadiusRange.value = 300; interactionRadiusLabel.textContent = 300;
+      trailToggle.checked = true;
+      enableSound.checked = false;
+      updateUI();
+      initParticles();
+    },
+    neon: () => {
+      quantityRange.value = 8000; quantityLabel.textContent = 8000;
+      sizeRange.value = 4; sizeLabel.textContent = 4;
+      speedRange.value = 3.5; speedLabel.textContent = 3.5;
+      lifeSpanRange.value = 12; lifeSpanLabel.textContent = 12;
+      shapeSelect.value = 'star';
+      colorModeSelect.value = 'rainbow';
+      interactionSelect.value = 'swirl';
+      interactionRadiusRange.value = 200; interactionRadiusLabel.textContent = 200;
+      trailToggle.checked = true;
+      enableSound.checked = false;
+      updateUI();
+      initParticles();
+    },
+    fireworks: () => {
+      quantityRange.value = 5000; quantityLabel.textContent = 5000;
+      sizeRange.value = 3; sizeLabel.textContent = 3;
+      speedRange.value = 8; speedLabel.textContent = 8;
+      lifeSpanRange.value = 5; lifeSpanLabel.textContent = 5;
+      shapeSelect.value = 'circle';
+      colorModeSelect.value = 'fixed';
+      fixedColorPicker.value = '#ff4500';
+      interactionSelect.value = 'explosion';
+      interactionRadiusRange.value = 300; interactionRadiusLabel.textContent = 300;
+      trailToggle.checked = true;
+      enableSound.checked = false;
+      updateUI();
+      initParticles();
+    }
+  };
+
+  document.querySelectorAll('button.preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-preset');
+      if(presets[key]) presets[key]();
+    });
+  });
+
+  // UI visibility toggles and updates
+  function updateUI() {
+    fixedColorPicker.style.display = (colorModeSelect.value === 'fixed') ? 'block' : 'none';
+    const gradVis = (colorModeSelect.value === 'gradient');
+    gradientStart.parentElement.style.display = gradVis ? 'block' : 'none';
+    gradientEnd.parentElement.style.display = gradVis ? 'block' : 'none';
+
+    customShapeSection.style.display = (shapeSelect.value === 'custom') ? 'block' : 'none';
+  }
+  updateUI();
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'h' || e.key === 'H') {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+    }
+    else if(e.key === 'r' || e.key === 'R') {
+      initParticles();
+    }
+  });
+
+  // Reset on resize
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth - 320, window.innerHeight);
+    camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  // Main animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+
+    const now = performance.now();
+    const delta = (now - lastTime) / 1000;
+    lastTime = now;
+
+    updateParticles(delta);
+    updateColors(delta);
+
+    particleGeometry.attributes.position.needsUpdate = true;
+
+    renderer.render(scene, camera);
+
+    // FPS calculation
+    fpsFrames++;
+    fpsTime += delta;
+    if(fpsTime > 0.5) {
+      const fps = Math.round(fpsFrames / fpsTime);
+      fpsCounter.textContent = `FPS: ${fps}`;
+      fpsFrames = 0;
+      fpsTime = 0;
+    }
+  }
+
+  // Init everything
+  initParticles();
+  animate();
+
+  // Update particles on slider changes
+  [quantityRange, sizeRange, speedRange, lifeSpanRange, interactionRadiusRange].forEach(el => {
+    el.addEventListener('change', () => {
+      initParticles();
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
