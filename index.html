@@ -3,707 +3,170 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ultra Beast Particle Simulator</title>
+<title>Advanced Particle Simulator</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap');
-  * {
-    box-sizing: border-box;
-  }
-  body, html {
-    margin: 0; padding: 0; overflow: hidden;
-    background: #121217;
+  body {
+    margin: 0; overflow: hidden;
+    background-color: #121217;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #0ff;
-    font-family: 'Exo 2', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    user-select: none;
+    display: flex;
   }
   #sidebar {
-    position: fixed; top: 0; left: 0; height: 100vh; width: 320px;
-    background: rgba(20, 20, 30, 0.85);
-    backdrop-filter: blur(16px);
-    box-shadow: 4px 0 15px rgba(0, 255, 255, 0.3);
-    color: #0ff;
-    display: flex; flex-direction: column;
+    width: 280px;
+    background: #222;
+    padding: 15px;
+    box-sizing: border-box;
     overflow-y: auto;
-    transition: width 0.3s ease;
-    border-right: 1px solid #0ff;
-    z-index: 1000;
-  }
-  #sidebar.collapsed {
-    width: 50px;
+    height: 100vh;
   }
   #sidebar h2 {
-    margin: 16px 24px;
-    font-weight: 700;
-    font-size: 1.8rem;
-    letter-spacing: 0.08em;
-    text-shadow: 0 0 12px #0ff;
-    user-select: none;
-  }
-  .section {
-    margin: 12px 16px 24px 16px;
-    border-radius: 12px;
-    background: rgba(0,0,0,0.35);
-    box-shadow: inset 0 0 14px #0ff8;
-    padding: 12px 24px 18px 24px;
-    user-select: none;
-  }
-  .section h3 {
-    margin: 0 0 12px 0;
-    cursor: pointer;
-    user-select: none;
+    margin-top: 0;
     color: #0ff;
-    text-shadow: 0 0 8px #0ff;
-    display: flex; justify-content: space-between; align-items: center;
-    font-weight: 700;
-    font-size: 1.2rem;
-  }
-  .section.collapsed > .content {
-    display: none;
-  }
-  .section .content > * {
-    margin: 8px 0;
+    text-align: center;
   }
   label {
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 0.95rem;
-    color: #0ff;
+    display: block;
+    margin: 10px 0 4px;
+    font-size: 0.9rem;
   }
-  input[type="range"] {
-    width: 140px;
-    accent-color: #0ff;
-  }
-  select, input[type="color"] {
-    background: #0ff1;
-    border: none;
-    border-radius: 6px;
-    color: #0ff;
-    padding: 5px 10px;
-    font-weight: 700;
-    text-shadow: 0 0 6px #0ff;
-    cursor: pointer;
-  }
-  button.presetBtn {
+  input[type="range"], select, input[type="color"] {
     width: 100%;
-    margin-top: 6px;
-    background: #007777aa;
+    margin-bottom: 10px;
+  }
+  button {
+    background: #0ff;
     border: none;
-    border-radius: 10px;
-    color: #0ff;
-    font-weight: 700;
-    padding: 8px 0;
-    font-size: 1rem;
+    padding: 10px;
+    margin: 5px 0;
     cursor: pointer;
-    box-shadow: 0 0 6px #0ffcc;
-    transition: background 0.3s ease;
-  }
-  button.presetBtn:hover {
-    background: #00bbbbcc;
-  }
-  .tooltip {
-    position: relative;
-  }
-  .tooltip:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: 50%; bottom: 120%;
-    transform: translateX(-50%);
-    background: #0ffcc;
-    color: #000;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0.9;
-    box-shadow: 0 0 12px #0ffcc;
-    user-select: none;
-  }
-  #toggleSidebarBtn {
-    position: absolute;
-    top: 16px; right: 16px;
-    background: none;
-    border: none;
-    color: #0ff;
-    font-size: 1.8rem;
-    cursor: pointer;
-    user-select: none;
-    transition: transform 0.3s ease;
-    z-index: 1010;
-  }
-  #toggleSidebarBtn.collapsed {
-    transform: rotate(180deg);
-  }
-  #fpsCounter {
-    position: fixed;
-    top: 12px; right: 12px;
-    color: #0ff;
-    font-weight: 700;
-    font-family: monospace;
-    font-size: 1.2rem;
-    text-shadow: 0 0 6px #0ff;
-    z-index: 1001;
-    user-select: none;
+    font-weight: bold;
+    color: #111;
+    width: 100%;
+    border-radius: 4px;
   }
   canvas {
+    flex: 1;
     display: block;
-    position: fixed;
-    top: 0; left: 320px;
-    width: calc(100vw - 320px);
-    height: 100vh;
-    background: #121217;
-    outline: none;
-  }
-  #sidebar.collapsed + canvas {
-    left: 50px;
-    width: calc(100vw - 50px);
-  }
-  #customShapeCanvas {
-    border: 1px solid #0ff6;
-    border-radius: 10px;
-    cursor: crosshair;
-    background: #000a;
-    box-shadow: 0 0 10px #0ff8 inset;
   }
 </style>
 </head>
 <body>
 
 <div id="sidebar">
-  <button id="toggleSidebarBtn" aria-label="Toggle sidebar">◀</button>
-  <h2>Ultra Beast Particles</h2>
+  <h2>Particle Settings</h2>
 
-  <div class="section" id="particleSettings">
-    <h3>Particle Settings <span>▼</span></h3>
-    <div class="content">
-      <label class="tooltip" data-tooltip="Number of particles (performance depends on your device)">
-        Quantity
-        <input type="range" id="quantityRange" min="100" max="20000" step="100" value="7000" />
-      </label>
-      <label class="tooltip" data-tooltip="Size of each particle">
-        Size
-        <input type="range" id="sizeRange" min="0.5" max="10" step="0.1" value="3" />
-      </label>
-      <label class="tooltip" data-tooltip="Speed multiplier">
-        Speed
-        <input type="range" id="speedRange" min="0" max="20" step="0.1" value="3" />
-      </label>
-      <label class="tooltip" data-tooltip="Particle lifetime in seconds">
-        Lifetime
-        <input type="range" id="lifeSpanRange" min="3" max="30" step="1" value="15" />
-      </label>
-    </div>
-  </div>
+  <label for="quantity">Quantity</label>
+  <input id="quantity" type="range" min="100" max="5000" value="1000" step="100" />
 
-  <div class="section" id="shapeSettings">
-    <h3>Particle Shape <span>▼</span></h3>
-    <div class="content">
-      <label class="tooltip" data-tooltip="Choose particle shape">
-        Shape
-        <select id="shapeSelect">
-          <option value="circle">Circle</option>
-          <option value="square">Square</option>
-          <option value="star">Star</option>
-          <option value="custom">Custom (draw below)</option>
-        </select>
-      </label>
-      <canvas id="customShapeCanvas" width="128" height="128" style="display:none; margin-top: 8px;"></canvas>
-      <button id="clearCustomShape" style="margin-top: 8px; display:none; width: 100%;">Clear Custom Shape</button>
-    </div>
-  </div>
+  <label for="size">Size</label>
+  <input id="size" type="range" min="1" max="20" value="5" />
 
-  <div class="section" id="interactionSettings">
-    <h3>Interaction <span>▼</span></h3>
-    <div class="content">
-      <label class="tooltip" data-tooltip="Cursor interaction mode">
-        Mode
-        <select id="interactionSelect">
-          <option value="static">Static</option>
-          <option value="attract">Attract</option>
-          <option value="repel">Repel</option>
-          <option value="swirl">Swirl</option>
-          <option value="explosion">Explosion (click)</option>
-          <option value="gravityWell">Gravity Well</option>
-        </select>
-      </label>
-      <label class="tooltip" data-tooltip="Radius of interaction effect">
-        Radius
-        <input type="range" id="interactionRadiusRange" min="10" max="400" step="5" value="150" />
-      </label>
-      <label class="tooltip" data-tooltip="Toggle particle trails">
-        Trails
-        <input type="checkbox" id="trailToggle" checked />
-      </label>
-    </div>
-  </div>
+  <label for="speed">Speed</label>
+  <input id="speed" type="range" min="0" max="10" value="2" step="0.1" />
 
-  <div class="section" id="colorSettings">
-    <h3>Colors <span>▼</span></h3>
-    <div class="content">
-      <label class="tooltip" data-tooltip="Color mode">
-        Mode
-        <select id="colorModeSelect">
-          <option value="fixed">Fixed</option>
-          <option value="random">Random</option>
-          <option value="gradient">Gradient</option>
-          <option value="rainbow">Rainbow</option>
-          <option value="soundReactive">Sound Reactive</option>
-        </select>
-      </label>
-      <label id="fixedColorLabel" class="tooltip" data-tooltip="Pick fixed particle color" style="display:none;">
-        Color
-        <input type="color" id="fixedColorPicker" value="#00ffff" />
-      </label>
-      <label id="gradientStartLabel" class="tooltip" data-tooltip="Gradient start color" style="display:none;">
-        Gradient Start
-        <input type="color" id="gradientStart" value="#00ffff" />
-      </label>
-      <label id="gradientEndLabel" class="tooltip" data-tooltip="Gradient end color" style="display:none;">
-        Gradient End
-        <input type="color" id="gradientEnd" value="#ff00ff" />
-      </label>
-      <label class="tooltip" data-tooltip="Enable microphone sound reactive mode">
-        Sound Reactive
-        <input type="checkbox" id="enableSoundReactive" />
-      </label>
-    </div>
-  </div>
+  <label for="lifetime">Lifetime (seconds)</label>
+  <input id="lifetime" type="range" min="1" max="30" value="15" />
 
-  <div class="section" id="presetsSettings">
-    <h3>Presets <span>▼</span></h3>
-    <div class="content">
-      <button class="presetBtn" data-preset="calm">Calm</button>
-      <button class="presetBtn" data-preset="storm">Storm</button>
-      <button class="presetBtn" data-preset="neon">Neon</button>
-      <button class="presetBtn" data-preset="fireworks">Fireworks</button>
-    </div>
-  </div>
+  <label for="shape">Shape</label>
+  <select id="shape">
+    <option value="circle">Circle</option>
+    <option value="square">Square</option>
+    <option value="star">Star</option>
+  </select>
 
-  <div class="section" id="miscSettings">
-    <h3>Misc <span>▼</span></h3>
-    <div class="content">
-      <button id="resetBtn" style="width:100%;">Reset Particles (R)</button>
-      <button id="pauseBtn" style="width:100%; margin-top:8px;">Pause/Resume (P)</button>
-    </div>
-  </div>
+  <label for="interaction">Interaction Mode</label>
+  <select id="interaction">
+    <option value="static">Static</option>
+    <option value="attract">Attract</option>
+    <option value="repel">Repel</option>
+    <option value="swirl">Swirl</option>
+  </select>
+
+  <label for="colorMode">Color Mode</label>
+  <select id="colorMode">
+    <option value="fixed">Fixed</option>
+    <option value="gradient">Gradient</option>
+    <option value="rainbow">Rainbow</option>
+  </select>
+
+  <label for="fixedColor">Fixed Color</label>
+  <input id="fixedColor" type="color" value="#00ffff" />
+
+  <label for="gradientStart">Gradient Start</label>
+  <input id="gradientStart" type="color" value="#00ffff" />
+
+  <label for="gradientEnd">Gradient End</label>
+  <input id="gradientEnd" type="color" value="#ff00ff" />
+
+  <button id="pauseBtn">Pause</button>
+  <button id="resetBtn">Reset</button>
 </div>
 
-<button id="toggleSidebarBtn" aria-label="Toggle sidebar" style="display:none;">◀</button>
-<div id="fpsCounter">FPS: 0</div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/postprocessing/EffectComposer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/postprocessing/RenderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/postprocessing/ShaderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
 (() => {
-  'use strict';
+  // Get UI elements
+  const quantityInput = document.getElementById('quantity');
+  const sizeInput = document.getElementById('size');
+  const speedInput = document.getElementById('speed');
+  const lifetimeInput = document.getElementById('lifetime');
+  const shapeSelect = document.getElementById('shape');
+  const interactionSelect = document.getElementById('interaction');
+  const colorModeSelect = document.getElementById('colorMode');
+  const fixedColorInput = document.getElementById('fixedColor');
+  const gradientStartInput = document.getElementById('gradientStart');
+  const gradientEndInput = document.getElementById('gradientEnd');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
 
-  // Basic setup
-  const containerLeftMargin = 320; // sidebar width when expanded
-  const containerLeftMarginCollapsed = 50;
-  const canvas = document.createElement('canvas');
-  document.body.appendChild(canvas);
-
-  const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: false});
-  renderer.setSize(window.innerWidth - containerLeftMargin, window.innerHeight);
-  renderer.setClearColor(0x121217, 1);
-  renderer.setPixelRatio(window.devicePixelRatio);
-
+  // Setup Three.js basics
+  const canvasWidth = window.innerWidth - 280;
+  const canvasHeight = window.innerHeight;
   const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, canvasWidth / canvasHeight, 0.1, 1000);
+  camera.position.z = 400;
 
-  // Camera setup (orthographic for 2D style particles with 3D depth)
-  let camera;
-  function updateCamera() {
-    const width = window.innerWidth - (sidebar.classList.contains('collapsed') ? containerLeftMarginCollapsed : containerLeftMargin);
-    const height = window.innerHeight;
-    const aspect = width / height;
-    const frustumHeight = height;
-    const frustumWidth = width;
+  const renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setSize(canvasWidth, canvasHeight);
+  renderer.setClearColor(0x121217);
+  document.body.appendChild(renderer.domElement);
+  renderer.domElement.style.marginLeft = '280px';
 
-    camera = new THREE.OrthographicCamera(
-      frustumWidth / -2, frustumWidth / 2,
-      frustumHeight / 2, frustumHeight / -2,
-      -1000, 1000
-    );
-    camera.position.z = 10;
-  }
-  updateCamera();
+  // Particle data arrays
+  let particles;
+  let geometry;
+  let material;
 
-  // Post-processing bloom
-  const composer = new THREE.EffectComposer(renderer);
-  const renderPass = new THREE.RenderPass(scene, camera);
-  composer.addPass(renderPass);
-  const bloomPass = new THREE.UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight), 
-    1.5, 0.4, 0.85
-  );
-  bloomPass.threshold = 0;
-  bloomPass.strength = 1.2;
-  bloomPass.radius = 0.6;
-  composer.addPass(bloomPass);
+  let particleCount = +quantityInput.value;
+  let particleSize = +sizeInput.value;
+  let particleSpeed = +speedInput.value;
+  let particleLifetime = +lifetimeInput.value;
+  let interactionMode = interactionSelect.value;
+  let colorMode = colorModeSelect.value;
+  let fixedColor = new THREE.Color(fixedColorInput.value);
+  let gradientStart = new THREE.Color(gradientStartInput.value);
+  let gradientEnd = new THREE.Color(gradientEndInput.value);
+  let paused = false;
 
-  // Particle system variables
-  let particleCount = 7000;
-  let particleSize = 3;
-  let particleSpeed = 3;
-  let particleLifetime = 15;
-  let interactionRadius = 150;
-  let interactionMode = 'static';
-  let trailEnabled = true;
-  let colorMode = 'fixed';
-  let fixedColor = new THREE.Color(0x00ffff);
-  let gradientStart = new THREE.Color(0x00ffff);
-  let gradientEnd = new THREE.Color(0xff00ff);
-  let soundReactiveEnabled = false;
-
-  // Arrays for particle data
+  // Particle custom data arrays for positions, velocities, ages
   let positions = new Float32Array(particleCount * 3);
   let velocities = new Float32Array(particleCount * 3);
   let ages = new Float32Array(particleCount);
-  let lifetimes = new Float32Array(particleCount);
-  let accelerations = new Float32Array(particleCount * 3);
-  let colorsArray = new Float32Array(particleCount * 3);
-  let sizes = new Float32Array(particleCount);
 
-  // Mouse state
-  const mouse = {x: 0, y: 0, down: false};
+  // For coloring
+  let colors = new Float32Array(particleCount * 3);
 
-  // Sound reactive
-  let audioContext, analyser, dataArray, source;
-
-  // THREE objects
-  let instancedMesh;
-  let dummyMatrix = new THREE.Object3D();
-
-  // Particle geometry & material
-  const baseGeometry = new THREE.CircleGeometry(0.5, 8);
-
-  // Particle shape canvas for custom shapes
-  const shapeCanvas = document.createElement('canvas');
-  shapeCanvas.width = shapeCanvas.height = 128;
-  const shapeCtx = shapeCanvas.getContext('2d');
-
-  // Particle texture cache
-  const particleTextureCache = {};
-
-  // Sidebar & UI Elements
-  const sidebar = document.getElementById('sidebar');
-  const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
-  const fpsCounter = document.getElementById('fpsCounter');
-
-  // Controls
-  const quantityRange = document.getElementById('quantityRange');
-  const sizeRange = document.getElementById('sizeRange');
-  const speedRange = document.getElementById('speedRange');
-  const lifeSpanRange = document.getElementById('lifeSpanRange');
-  const interactionRadiusRange = document.getElementById('interactionRadiusRange');
-  const interactionSelect = document.getElementById('interactionSelect');
-  const trailToggle = document.getElementById('trailToggle');
-  const colorModeSelect = document.getElementById('colorModeSelect');
-  const fixedColorPicker = document.getElementById('fixedColorPicker');
-  const gradientStartPicker = document.getElementById('gradientStart');
-  const gradientEndPicker = document.getElementById('gradientEnd');
-  const enableSoundReactiveCheckbox = document.getElementById('enableSoundReactive');
-  const shapeSelect = document.getElementById('shapeSelect');
-  const customShapeCanvas = document.getElementById('customShapeCanvas');
-  const clearCustomShapeBtn = document.getElementById('clearCustomShape');
-  const presetsButtons = document.querySelectorAll('.presetBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-
-  // Sections collapsible
-  document.querySelectorAll('.section h3').forEach(h3 => {
-    h3.addEventListener('click', () => {
-      h3.parentElement.classList.toggle('collapsed');
-    });
-  });
-
-  // Sidebar toggle button
-  toggleSidebarBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-    toggleSidebarBtn.classList.toggle('collapsed');
-    updateCanvasSize();
-  });
-
-  // Show/hide color pickers based on mode
-  function updateColorUI() {
-    const val = colorModeSelect.value;
-    fixedColorPicker.parentElement.style.display = val === 'fixed' ? 'flex' : 'none';
-    gradientStartPicker.parentElement.style.display = val === 'gradient' ? 'flex' : 'none';
-    gradientEndPicker.parentElement.style.display = val === 'gradient' ? 'flex' : 'none';
-  }
-  colorModeSelect.addEventListener('change', () => {
-    colorMode = colorModeSelect.value;
-    updateColorUI();
-    initParticles();
-  });
-  updateColorUI();
-
-  // Show/hide custom shape canvas
-  function updateShapeUI() {
-    if (shapeSelect.value === 'custom') {
-      customShapeCanvas.style.display = 'block';
-      clearCustomShapeBtn.style.display = 'block';
-    } else {
-      customShapeCanvas.style.display = 'none';
-      clearCustomShapeBtn.style.display = 'none';
-    }
-    initParticles();
-  }
-  shapeSelect.addEventListener('change', () => {
-    updateShapeUI();
-  });
-  updateShapeUI();
-
-  clearCustomShapeBtn.addEventListener('click', () => {
-    shapeCtx.clearRect(0, 0, shapeCanvas.width, shapeCanvas.height);
-    drawDefaultCustomShape();
-    initParticles();
-  });
-
-  // Draw default custom shape (circle)
-  function drawDefaultCustomShape() {
-    shapeCtx.clearRect(0, 0, shapeCanvas.width, shapeCanvas.height);
-    shapeCtx.fillStyle = 'white';
-    shapeCtx.beginPath();
-    shapeCtx.arc(shapeCanvas.width/2, shapeCanvas.height/2, shapeCanvas.width/3, 0, Math.PI*2);
-    shapeCtx.fill();
-  }
-  drawDefaultCustomShape();
-
-  // Draw custom shape canvas drawing logic
-  let isDrawing = false;
-  let lastPos = null;
-  customShapeCanvas.addEventListener('mousedown', (e) => {
-    isDrawing = true;
-    const rect = customShapeCanvas.getBoundingClientRect();
-    lastPos = {x: e.clientX - rect.left, y: e.clientY - rect.top};
-  });
-  window.addEventListener('mouseup', () => {
-    isDrawing = false;
-    lastPos = null;
-  });
-  customShapeCanvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing) return;
-    const rect = customShapeCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    shapeCtx.strokeStyle = 'white';
-    shapeCtx.lineWidth = 6;
-    shapeCtx.lineCap = 'round';
-    shapeCtx.beginPath();
-    shapeCtx.moveTo(lastPos.x, lastPos.y);
-    shapeCtx.lineTo(x, y);
-    shapeCtx.stroke();
-    lastPos = {x, y};
-  });
-
-  // Preset definitions
-  const presets = {
-    calm: {
-      quantity: 3000,
-      size: 2,
-      speed: 1,
-      lifeSpan: 20,
-      interactionMode: 'static',
-      interactionRadius: 120,
-      trail: true,
-      colorMode: 'gradient',
-      fixedColor: '#00ffff',
-      gradientStart: '#00ffff',
-      gradientEnd: '#ff00ff',
-      shape: 'circle',
-      soundReactive: false,
-    },
-    storm: {
-      quantity: 15000,
-      size: 2,
-      speed: 10,
-      lifeSpan: 8,
-      interactionMode: 'repel',
-      interactionRadius: 180,
-      trail: true,
-      colorMode: 'rainbow',
-      fixedColor: '#00ffff',
-      gradientStart: '#00ffff',
-      gradientEnd: '#ff00ff',
-      shape: 'star',
-      soundReactive: false,
-    },
-    neon: {
-      quantity: 10000,
-      size: 4,
-      speed: 6,
-      lifeSpan: 12,
-      interactionMode: 'swirl',
-      interactionRadius: 200,
-      trail: true,
-      colorMode: 'fixed',
-      fixedColor: '#00ffff',
-      gradientStart: '#00ffff',
-      gradientEnd: '#ff00ff',
-      shape: 'square',
-      soundReactive: false,
-    },
-    fireworks: {
-      quantity: 5000,
-      size: 3,
-      speed: 14,
-      lifeSpan: 6,
-      interactionMode: 'explosion',
-      interactionRadius: 250,
-      trail: true,
-      colorMode: 'random',
-      fixedColor: '#00ffff',
-      gradientStart: '#00ffff',
-      gradientEnd: '#ff00ff',
-      shape: 'circle',
-      soundReactive: false,
-    }
-  };
-
-  presetsButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const p = presets[btn.dataset.preset];
-      if (!p) return;
-      quantityRange.value = p.quantity;
-      sizeRange.value = p.size;
-      speedRange.value = p.speed;
-      lifeSpanRange.value = p.lifeSpan;
-      interactionSelect.value = p.interactionMode;
-      interactionRadiusRange.value = p.interactionRadius;
-      trailToggle.checked = p.trail;
-      colorModeSelect.value = p.colorMode;
-      fixedColorPicker.value = p.fixedColor;
-      gradientStartPicker.value = p.gradientStart;
-      gradientEndPicker.value = p.gradientEnd;
-      shapeSelect.value = p.shape;
-      enableSoundReactiveCheckbox.checked = p.soundReactive;
-
-      colorMode = p.colorMode;
-      interactionMode = p.interactionMode;
-      particleCount = p.quantity;
-      particleSize = p.size;
-      particleSpeed = p.speed;
-      particleLifetime = p.lifeSpan;
-      interactionRadius = p.interactionRadius;
-      trailEnabled = p.trail;
-      fixedColor = new THREE.Color(p.fixedColor);
-      gradientStart = new THREE.Color(p.gradientStart);
-      gradientEnd = new THREE.Color(p.gradientEnd);
-      soundReactiveEnabled = p.soundReactive;
-
-      updateColorUI();
-      updateShapeUI();
-      initParticles();
-    });
-  });
-
-  // Sound reactive toggle listener
-  enableSoundReactiveCheckbox.addEventListener('change', e => {
-    if(e.target.checked) {
-      startAudio();
-    } else {
-      stopAudio();
-    }
-    soundReactiveEnabled = e.target.checked;
-  });
-
-  // Update values on input change
-  quantityRange.addEventListener('input', e => {
-    particleCount = +e.target.value;
-    initParticles();
-  });
-  sizeRange.addEventListener('input', e => {
-    particleSize = +e.target.value;
-    updateParticleMaterialSize();
-  });
-  speedRange.addEventListener('input', e => {
-    particleSpeed = +e.target.value;
-  });
-  lifeSpanRange.addEventListener('input', e => {
-    particleLifetime = +e.target.value;
-  });
-  interactionRadiusRange.addEventListener('input', e => {
-    interactionRadius = +e.target.value;
-  });
-  interactionSelect.addEventListener('change', e => {
-    interactionMode = e.target.value;
-  });
-  trailToggle.addEventListener('change', e => {
-    trailEnabled = e.target.checked;
-  });
-  fixedColorPicker.addEventListener('input', e => {
-    fixedColor.set(e.target.value);
-  });
-  gradientStartPicker.addEventListener('input', e => {
-    gradientStart.set(e.target.value);
-  });
-  gradientEndPicker.addEventListener('input', e => {
-    gradientEnd.set(e.target.value);
-  });
-  shapeSelect.addEventListener('change', () => {
-    updateShapeUI();
-  });
-
-  resetBtn.addEventListener('click', () => {
-    initParticles();
-  });
-
-  pauseBtn.addEventListener('click', () => {
-    paused = !paused;
-  });
-
-  // Keyboard shortcuts
-  window.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return; // ignore inputs
-    if(e.key === 'h' || e.key === 'H') {
-      sidebar.classList.toggle('collapsed');
-      toggleSidebarBtn.classList.toggle('collapsed');
-      updateCanvasSize();
-    }
-    if(e.key === 'r' || e.key === 'R') {
-      initParticles();
-    }
-    if(e.key === 'p' || e.key === 'P') {
-      paused = !paused;
-    }
-  });
-
-  // Update canvas size with sidebar width
-  function updateCanvasSize() {
-    const leftMargin = sidebar.classList.contains('collapsed') ? containerLeftMarginCollapsed : containerLeftMargin;
-    canvas.style.left = leftMargin + 'px';
-    canvas.style.width = (window.innerWidth - leftMargin) + 'px';
-    renderer.setSize(window.innerWidth - leftMargin, window.innerHeight);
-    updateCamera();
-  }
-  window.addEventListener('resize', updateCanvasSize);
-
-  // Mouse position for interaction (normalized to screen coords)
+  // Mouse tracking
+  let mouse = { x: 0, y: 0 };
   window.addEventListener('mousemove', e => {
-    const leftMargin = sidebar.classList.contains('collapsed') ? containerLeftMarginCollapsed : containerLeftMargin;
-    mouse.x = e.clientX - leftMargin - (window.innerWidth - leftMargin) / 2;
-    mouse.y = - (e.clientY - window.innerHeight / 2);
-  });
-  window.addEventListener('mousedown', e => {
-    mouse.down = true;
-  });
-  window.addEventListener('mouseup', e => {
-    mouse.down = false;
+    mouse.x = e.clientX - 280 - canvasWidth/2;
+    mouse.y = - (e.clientY - canvasHeight/2);
   });
 
-  // Particle material and geometry (will be recreated for different shapes)
-  let particleMaterial;
-  let particleGeometry;
-
-  function createParticleTexture(shape = 'circle') {
-    // Return THREE.Texture based on shape
-    if (particleTextureCache[shape]) return particleTextureCache[shape];
-
+  // Create texture for particle shapes
+  function createParticleTexture(shape) {
     const size = 64;
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
@@ -711,9 +174,6 @@
 
     ctx.clearRect(0, 0, size, size);
     ctx.fillStyle = 'white';
-
-    ctx.shadowColor = '#0ff';
-    ctx.shadowBlur = 8;
 
     if(shape === 'circle') {
       ctx.beginPath();
@@ -723,7 +183,6 @@
       const s = size * 0.6;
       ctx.fillRect((size - s)/2, (size - s)/2, s, s);
     } else if(shape === 'star') {
-      // Draw 5-point star
       const cx = size/2;
       const cy = size/2;
       const spikes = 5;
@@ -750,418 +209,222 @@
       ctx.lineTo(cx, cy - outerRadius);
       ctx.closePath();
       ctx.fill();
-    } else if(shape === 'custom') {
-      // Use custom shape canvas
-      ctx.clearRect(0, 0, size, size);
-      ctx.drawImage(shapeCanvas, 0, 0, size, size);
     }
 
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    particleTextureCache[shape] = texture;
-    return texture;
+    return new THREE.CanvasTexture(canvas);
   }
 
-  function createParticleMaterial(shape) {
-    const texture = createParticleTexture(shape);
-    return new THREE.PointsMaterial({
-      size: particleSize,
-      sizeAttenuation: true,
-      map: texture,
-      transparent: true,
-      alphaTest: 0.01,
-      depthWrite: false,
-      blending: trailEnabled ? THREE.AdditiveBlending : THREE.NormalBlending,
-      color: fixedColor,
-      vertexColors: true,
-    });
-  }
-
-  // Initialize particles buffers & THREE objects
+  // Initialize particles buffers
   function initParticles() {
-    // Clamp particleCount to max for performance safety
-    if (particleCount > 20000) particleCount = 20000;
+    particleCount = +quantityInput.value;
+    particleSize = +sizeInput.value;
+    particleSpeed = +speedInput.value;
+    particleLifetime = +lifetimeInput.value;
+    interactionMode = interactionSelect.value;
+    colorMode = colorModeSelect.value;
+    fixedColor.set(fixedColorInput.value);
+    gradientStart.set(gradientStartInput.value);
+    gradientEnd.set(gradientEndInput.value);
 
-    // Arrays
     positions = new Float32Array(particleCount * 3);
     velocities = new Float32Array(particleCount * 3);
     ages = new Float32Array(particleCount);
-    lifetimes = new Float32Array(particleCount);
-    accelerations = new Float32Array(particleCount * 3);
-    colorsArray = new Float32Array(particleCount * 3);
-    sizes = new Float32Array(particleCount);
+    colors = new Float32Array(particleCount * 3);
 
-    // Populate initial particle data randomly
-    for(let i = 0; i < particleCount; i++) {
-      // Position inside viewport (-width/2, width/2, -height/2, height/2)
-      positions[i*3] = (Math.random() - 0.5) * (window.innerWidth - (sidebar.classList.contains('collapsed') ? containerLeftMarginCollapsed : containerLeftMargin));
-      positions[i*3+1] = (Math.random() - 0.5) * window.innerHeight;
+    // Initialize positions, velocities, colors
+    for(let i=0; i<particleCount; i++) {
+      positions[i*3] = (Math.random() - 0.5) * canvasWidth;
+      positions[i*3+1] = (Math.random() - 0.5) * canvasHeight;
       positions[i*3+2] = 0;
 
-      // Velocity random direction with speed multiplier
-      const angle = Math.random() * Math.PI * 2;
-      const speed = particleSpeed * (0.3 + 0.7 * Math.random());
-      velocities[i*3] = Math.cos(angle) * speed;
-      velocities[i*3+1] = Math.sin(angle) * speed;
+      velocities[i*3] = (Math.random() - 0.5) * particleSpeed;
+      velocities[i*3+1] = (Math.random() - 0.5) * particleSpeed;
       velocities[i*3+2] = 0;
 
-      ages[i] = 0;
-      lifetimes[i] = particleLifetime * (0.8 + 0.4 * Math.random());
+      ages[i] = Math.random() * particleLifetime;
 
-      // Colors init - will be updated every frame based on mode
-      if(colorMode === 'fixed') {
-        colorsArray[i*3] = fixedColor.r;
-        colorsArray[i*3+1] = fixedColor.g;
-        colorsArray[i*3+2] = fixedColor.b;
-      } else if(colorMode === 'random') {
-        colorsArray[i*3] = Math.random();
-        colorsArray[i*3+1] = Math.random();
-        colorsArray[i*3+2] = Math.random();
-      } else if(colorMode === 'gradient' || colorMode === 'rainbow' || colorMode === 'soundReactive') {
-        colorsArray[i*3] = 1; // placeholder, updated each frame
-        colorsArray[i*3+1] = 1;
-        colorsArray[i*3+2] = 1;
-      }
-
-      sizes[i] = particleSize;
+      colors[i*3] = fixedColor.r;
+      colors[i*3+1] = fixedColor.g;
+      colors[i*3+2] = fixedColor.b;
     }
 
-    // Remove previous mesh
-    if(instancedMesh) {
-      scene.remove(instancedMesh);
-      instancedMesh.geometry.dispose();
-      instancedMesh.material.dispose();
-      instancedMesh = null;
+    if(particles) {
+      scene.remove(particles);
+      geometry.dispose();
+      material.dispose();
     }
 
-    particleMaterial = createParticleMaterial(shapeSelect.value);
-    particleMaterial.size = particleSize;
-    particleMaterial.vertexColors = true;
+    geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    particleGeometry = new THREE.InstancedBufferGeometry();
-    particleGeometry.instanceCount = particleCount;
-
-    // Base geometry = quad (square) for point sprites
-    const baseGeo = new THREE.PlaneGeometry(1,1);
-    particleGeometry.setAttribute('position', baseGeo.attributes.position);
-    particleGeometry.setIndex(baseGeo.index);
-
-    // Instance positions
-    particleGeometry.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(positions, 3));
-    // Instance colors
-    particleGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(colorsArray, 3));
-    // Instance size
-    particleGeometry.setAttribute('instanceSize', new THREE.InstancedBufferAttribute(sizes, 1));
-
-    // Shader material for instanced particles with size, color, texture
-    const vertexShader = `
-      attribute vec3 instancePosition;
-      attribute vec3 instanceColor;
-      attribute float instanceSize;
-      varying vec3 vColor;
-      varying vec2 vUv;
-      void main() {
-        vColor = instanceColor;
-        vUv = uv;
-        vec4 mvPosition = modelViewMatrix * vec4(instancePosition, 1.0);
-        gl_Position = projectionMatrix * mvPosition;
-        gl_PointSize = instanceSize * (300.0 / -mvPosition.z);
-      }
-    `;
-
-    const fragmentShader = `
-      uniform sampler2D pointTexture;
-      varying vec3 vColor;
-      varying vec2 vUv;
-      void main() {
-        vec4 texColor = texture2D(pointTexture, gl_PointCoord);
-        if(texColor.a < 0.1) discard;
-        gl_FragColor = vec4(vColor, 1.0) * texColor;
-      }
-    `;
-
-    particleMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        pointTexture: { value: createParticleTexture(shapeSelect.value) }
-      },
-      vertexShader,
-      fragmentShader,
+    material = new THREE.PointsMaterial({
+      size: particleSize,
+      vertexColors: true,
+      map: createParticleTexture(shapeSelect.value),
       transparent: true,
+      alphaTest: 0.1,
       depthWrite: false,
-      blending: trailEnabled ? THREE.AdditiveBlending : THREE.NormalBlending,
+      sizeAttenuation: true,
     });
 
-    instancedMesh = new THREE.Mesh(particleGeometry, particleMaterial);
-    scene.add(instancedMesh);
+    particles = new THREE.Points(geometry, material);
+    scene.add(particles);
   }
 
-  // Update particle material size
-  function updateParticleMaterialSize() {
-    if(particleMaterial) {
-      particleMaterial.uniforms.pointTexture.value = createParticleTexture(shapeSelect.value);
-      particleMaterial.size = particleSize;
-    }
-  }
-
-  // Variables for animation loop
-  let lastTime = 0;
-  let fps = 0;
-  let fpsCounterFrames = 0;
-  let fpsCounterLast = 0;
-  let paused = false;
-
-  // Audio setup for sound reactive mode
-  async function startAudio() {
-    try {
-      if(audioContext) return; // Already running
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-      source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyser);
-    } catch(e) {
-      alert('Error accessing microphone for sound reactive mode.');
-      enableSoundReactiveCheckbox.checked = false;
-      soundReactiveEnabled = false;
-    }
-  }
-  function stopAudio() {
-    if(source) {
-      source.disconnect();
-      source = null;
-    }
-    if(analyser) {
-      analyser.disconnect();
-      analyser = null;
-    }
-    if(audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
-  }
-
-  // Utility: lerp
-  function lerp(a, b, t) {
-    return a + (b - a) * t;
-  }
-
-  // HSV to RGB (all in 0-1 range)
-  function hsvToRgb(h, s, v) {
-    let r, g, b;
-
-    let i = Math.floor(h * 6);
-    let f = h * 6 - i;
-    let p = v * (1 - s);
-    let q = v * (1 - f * s);
-    let t = v * (1 - (1 - f) * s);
-
-    switch(i % 6){
-      case 0: r = v, g = t, b = p; break;
-      case 1: r = q, g = v, b = p; break;
-      case 2: r = p, g = v, b = t; break;
-      case 3: r = p, g = q, b = v; break;
-      case 4: r = t, g = p, b = v; break;
-      case 5: r = v, g = p, b = q; break;
-    }
-    return new THREE.Color(r, g, b);
-  }
-
-  // Update particle colors based on mode
+  // Update particle colors based on mode and time
   function updateColors(time) {
     if(colorMode === 'fixed') {
-      for(let i = 0; i < particleCount; i++) {
-        colorsArray[i*3] = fixedColor.r;
-        colorsArray[i*3+1] = fixedColor.g;
-        colorsArray[i*3+2] = fixedColor.b;
-      }
-    } else if(colorMode === 'random') {
-      for(let i = 0; i < particleCount; i++) {
-        if(ages[i] === 0) {
-          colorsArray[i*3] = Math.random();
-          colorsArray[i*3+1] = Math.random();
-          colorsArray[i*3+2] = Math.random();
-        }
+      for(let i=0; i<particleCount; i++) {
+        colors[i*3] = fixedColor.r;
+        colors[i*3+1] = fixedColor.g;
+        colors[i*3+2] = fixedColor.b;
       }
     } else if(colorMode === 'gradient') {
-      // Interpolate between gradientStart and gradientEnd based on Y position
-      for(let i = 0; i < particleCount; i++) {
-        const yNorm = (positions[i*3+1] + window.innerHeight/2) / window.innerHeight;
-        colorsArray[i*3] = lerp(gradientStart.r, gradientEnd.r, yNorm);
-        colorsArray[i*3+1] = lerp(gradientStart.g, gradientEnd.g, yNorm);
-        colorsArray[i*3+2] = lerp(gradientStart.b, gradientEnd.b, yNorm);
+      for(let i=0; i<particleCount; i++) {
+        const yNorm = (positions[i*3+1] + canvasHeight/2) / canvasHeight;
+        colors[i*3] = THREE.MathUtils.lerp(gradientStart.r, gradientEnd.r, yNorm);
+        colors[i*3+1] = THREE.MathUtils.lerp(gradientStart.g, gradientEnd.g, yNorm);
+        colors[i*3+2] = THREE.MathUtils.lerp(gradientStart.b, gradientEnd.b, yNorm);
       }
     } else if(colorMode === 'rainbow') {
-      // Hue cycles over time + particle index
-      for(let i = 0; i < particleCount; i++) {
+      for(let i=0; i<particleCount; i++) {
         const hue = ((time * 0.1) + i / particleCount) % 1;
-        const c = hsvToRgb(hue, 1, 1);
-        colorsArray[i*3] = c.r;
-        colorsArray[i*3+1] = c.g;
-        colorsArray[i*3+2] = c.b;
-      }
-    } else if(colorMode === 'soundReactive' && analyser && soundReactiveEnabled) {
-      analyser.getByteFrequencyData(dataArray);
-      for(let i = 0; i < particleCount; i++) {
-        // Map frequency data cyclically
-        const freqVal = dataArray[i % dataArray.length] / 255;
-        const c = hsvToRgb(freqVal, 1, 1);
-        colorsArray[i*3] = c.r;
-        colorsArray[i*3+1] = c.g;
-        colorsArray[i*3+2] = c.b;
+        const color = new THREE.Color();
+        color.setHSL(hue, 1, 0.5);
+        colors[i*3] = color.r;
+        colors[i*3+1] = color.g;
+        colors[i*3+2] = color.b;
       }
     }
+    geometry.attributes.color.needsUpdate = true;
   }
 
-  // Particle physics update
-  function updateParticles(delta, time) {
-    const w = window.innerWidth - (sidebar.classList.contains('collapsed') ? containerLeftMarginCollapsed : containerLeftMargin);
-    const h = window.innerHeight;
-
-    for(let i = 0; i < particleCount; i++) {
-      const idx3 = i*3;
-
-      // Age & respawn
+  // Particle physics and interaction
+  function updateParticles(delta) {
+    for(let i=0; i<particleCount; i++) {
       ages[i] += delta;
-      if(ages[i] > lifetimes[i]) {
-        // Respawn
-        positions[idx3] = (Math.random() - 0.5) * w;
-        positions[idx3+1] = (Math.random() - 0.5) * h;
-        velocities[idx3] = (Math.random() - 0.5) * particleSpeed;
-        velocities[idx3+1] = (Math.random() - 0.5) * particleSpeed;
-        velocities[idx3+2] = 0;
+      if(ages[i] > particleLifetime) {
+        // Respawn particle randomly inside canvas
+        positions[i*3] = (Math.random() - 0.5) * canvasWidth;
+        positions[i*3+1] = (Math.random() - 0.5) * canvasHeight;
+        velocities[i*3] = (Math.random() - 0.5) * particleSpeed;
+        velocities[i*3+1] = (Math.random() - 0.5) * particleSpeed;
         ages[i] = 0;
-        lifetimes[i] = particleLifetime * (0.8 + 0.4 * Math.random());
       }
 
-      // Interaction with mouse
-      const dx = mouse.x - positions[idx3];
-      const dy = mouse.y - positions[idx3+1];
+      const dx = mouse.x - positions[i*3];
+      const dy = mouse.y - positions[i*3+1];
       const dist = Math.sqrt(dx*dx + dy*dy);
 
-      if(interactionMode !== 'static' && dist < interactionRadius) {
-        const normX = dx / dist;
-        const normY = dy / dist;
-
+      if(interactionMode !== 'static' && dist < 150 && dist > 0) {
+        const nx = dx / dist;
+        const ny = dy / dist;
         switch(interactionMode) {
           case 'attract':
-            velocities[idx3] += normX * particleSpeed * delta * 3;
-            velocities[idx3+1] += normY * particleSpeed * delta * 3;
+            velocities[i*3] += nx * delta * 50;
+            velocities[i*3+1] += ny * delta * 50;
             break;
           case 'repel':
-            velocities[idx3] -= normX * particleSpeed * delta * 6;
-            velocities[idx3+1] -= normY * particleSpeed * delta * 6;
+            velocities[i*3] -= nx * delta * 50;
+            velocities[i*3+1] -= ny * delta * 50;
             break;
           case 'swirl':
-            // Perpendicular velocity change
-            velocities[idx3] += normY * particleSpeed * delta * 3;
-            velocities[idx3+1] -= normX * particleSpeed * delta * 3;
-            break;
-          case 'gravityWell':
-            // Gravity well stronger closer, clamp max force
-            const force = Math.min(5000 / (dist*dist), 30);
-            velocities[idx3] += normX * force * delta;
-            velocities[idx3+1] += normY * force * delta;
-            break;
-          case 'explosion':
-            if(mouse.down) {
-              // Apply explosive outward force
-              velocities[idx3] -= normX * particleSpeed * 20 * delta;
-              velocities[idx3+1] -= normY * particleSpeed * 20 * delta;
-            }
+            velocities[i*3] += ny * delta * 50;
+            velocities[i*3+1] -= nx * delta * 50;
             break;
         }
       }
 
-      // Friction
-      velocities[idx3] *= 0.96;
-      velocities[idx3+1] *= 0.96;
+      // Simple friction
+      velocities[i*3] *= 0.95;
+      velocities[i*3+1] *= 0.95;
 
-      // Update position
-      positions[idx3] += velocities[idx3] * delta;
-      positions[idx3+1] += velocities[idx3+1] * delta;
+      // Update positions
+      positions[i*3] += velocities[i*3] * delta * 60;
+      positions[i*3+1] += velocities[i*3+1] * delta * 60;
 
-      // Keep inside bounds - wrap around edges
-      if(positions[idx3] < -w/2) positions[idx3] += w;
-      else if(positions[idx3] > w/2) positions[idx3] -= w;
-
-      if(positions[idx3+1] < -h/2) positions[idx3+1] += h;
-      else if(positions[idx3+1] > h/2) positions[idx3+1] -= h;
+      // Wrap around edges
+      if(positions[i*3] < -canvasWidth/2) positions[i*3] += canvasWidth;
+      if(positions[i*3] > canvasWidth/2) positions[i*3] -= canvasWidth;
+      if(positions[i*3+1] < -canvasHeight/2) positions[i*3+1] += canvasHeight;
+      if(positions[i*3+1] > canvasHeight/2) positions[i*3+1] -= canvasHeight;
     }
+    geometry.attributes.position.needsUpdate = true;
   }
 
-  // Update instanced attributes buffers
-  function updateBuffers() {
-    const posAttr = particleGeometry.getAttribute('instancePosition');
-    const colAttr = particleGeometry.getAttribute('instanceColor');
-    const sizeAttr = particleGeometry.getAttribute('instanceSize');
+  let lastTime = performance.now();
 
-    for(let i = 0; i < particleCount; i++) {
-      posAttr.array[i*3] = positions[i*3];
-      posAttr.array[i*3+1] = positions[i*3+1];
-      posAttr.array[i*3+2] = positions[i*3+2];
+  function animate() {
+    if(!paused) {
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
 
-      colAttr.array[i*3] = colorsArray[i*3];
-      colAttr.array[i*3+1] = colorsArray[i*3+1];
-      colAttr.array[i*3+2] = colorsArray[i*3+2];
-
-      sizeAttr.array[i] = sizes[i];
+      updateParticles(delta);
+      updateColors(now / 1000);
+      renderer.render(scene, camera);
     }
-    posAttr.needsUpdate = true;
-    colAttr.needsUpdate = true;
-    sizeAttr.needsUpdate = true;
-  }
-
-  // Animation loop
-  function animate(time = 0) {
-    if(paused) {
-      requestAnimationFrame(animate);
-      return;
-    }
-
-    const delta = (time - lastTime) / 1000 || 0.016;
-    lastTime = time;
-
-    updateParticles(delta, time / 1000);
-    updateColors(time / 1000);
-    updateBuffers();
-
-    if(trailEnabled) {
-      renderer.autoClearColor = false;
-      renderer.setClearColor(new THREE.Color(0x121217), 0.06);
-      renderer.clear();
-      composer.render();
-    } else {
-      renderer.autoClearColor = true;
-      renderer.setClearColor(new THREE.Color(0x121217), 1);
-      composer.render();
-    }
-
-    // FPS calculation
-    fpsCounterFrames++;
-    if(time - fpsCounterLast > 1000) {
-      fps = Math.round(fpsCounterFrames * 1000 / (time - fpsCounterLast));
-      fpsCounterLast = time;
-      fpsCounterFrames = 0;
-      fpsCounter.textContent = `FPS: ${fps}`;
-    }
-
     requestAnimationFrame(animate);
   }
 
-  // Initialize particles first time
+  // UI event listeners
+  quantityInput.addEventListener('input', initParticles);
+  sizeInput.addEventListener('input', () => {
+    particleSize = +sizeInput.value;
+    if(material) material.size = particleSize;
+  });
+  speedInput.addEventListener('input', () => {
+    particleSpeed = +speedInput.value;
+  });
+  lifetimeInput.addEventListener('input', () => {
+    particleLifetime = +lifetimeInput.value;
+  });
+  interactionSelect.addEventListener('change', () => {
+    interactionMode = interactionSelect.value;
+  });
+  colorModeSelect.addEventListener('change', () => {
+    colorMode = colorModeSelect.value;
+  });
+  fixedColorInput.addEventListener('input', () => {
+    fixedColor.set(fixedColorInput.value);
+  });
+  gradientStartInput.addEventListener('input', () => {
+    gradientStart.set(gradientStartInput.value);
+  });
+  gradientEndInput.addEventListener('input', () => {
+    gradientEnd.set(gradientEndInput.value);
+  });
+  shapeSelect.addEventListener('change', () => {
+    if(material) {
+      material.map = createParticleTexture(shapeSelect.value);
+      material.needsUpdate = true;
+    }
+  });
+
+  pauseBtn.addEventListener('click', () => {
+    paused = !paused;
+    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+  });
+
+  resetBtn.addEventListener('click', () => {
+    initParticles();
+  });
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    const newWidth = window.innerWidth - 280;
+    const newHeight = window.innerHeight;
+    renderer.setSize(newWidth, newHeight);
+    camera.aspect = newWidth / newHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  // Initialize and start
   initParticles();
-
-  // Start animation
   animate();
-
-  // Update canvas size on load
-  updateCanvasSize();
 
 })();
 </script>
-
 </body>
 </html>
