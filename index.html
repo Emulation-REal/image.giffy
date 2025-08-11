@@ -1,466 +1,946 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Advanced Particle Simulator - Fixed UI</title>
-<style>
-  /* Reset and base */
-  * {
-    box-sizing: border-box;
-  }
-  body, html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    overflow: hidden; /* no scroll on body */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #121217;
-    color: #0ff;
-  }
-
-  /* Sidebar */
-  #sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 280px;
-    height: 100vh;
-    background-color: #222;
-    padding: 15px;
-    overflow-y: auto;
-    border-right: 2px solid #0ff;
-    z-index: 10; /* on top */
-  }
-
-  #sidebar h2 {
-    margin-top: 0;
-    color: #0ff;
-    text-align: center;
-    user-select: none;
-  }
-
-  label {
-    display: block;
-    margin: 10px 0 4px;
-    font-size: 0.9rem;
-    user-select: none;
-  }
-
-  input[type="range"], select, input[type="color"] {
-    width: 100%;
-    margin-bottom: 10px;
-  }
-
-  button {
-    background: #0ff;
-    border: none;
-    padding: 10px;
-    margin: 5px 0;
-    cursor: pointer;
-    font-weight: bold;
-    color: #111;
-    width: 100%;
-    border-radius: 4px;
-    user-select: none;
-    transition: background-color 0.2s ease;
-  }
-  button:hover {
-    background: #33ffff;
-  }
-
-  /* Canvas container */
-  #canvas-container {
-    position: fixed;
-    top: 0;
-    left: 280px; /* leave space for sidebar */
-    right: 0;
-    bottom: 0;
-    background-color: #121217;
-    overflow: hidden;
-    z-index: 1;
-  }
-
-  canvas {
-    display: block; /* remove inline spacing */
-    width: 100%;
-    height: 100%;
-    user-select: none;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate Dark Image Text Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Open+Sans&family=Lobster&family=Poppins&family=Montserrat&family=Oswald&family=Raleway&family=Playfair+Display&family=Source+Sans+Pro&family=Ubuntu&family=Inter&family=Merriweather&family=Lato&family=Nunito&family=Bebas+Neue&family=Inconsolata&display=swap" rel="stylesheet">
+  <style>
+    .dark body {
+      background: linear-gradient(to right, #1a202c, #2d3748);
+      color: #e2e8f0;
+    }
+    .dark .bg-white {
+      background-color: #2d3748;
+    }
+    .dark .text-blue-800 {
+      color: #63b3ed;
+    }
+    .dark .border-gray-300 {
+      border-color: #4a5568;
+    }
+    .dark .bg-gray-100 {
+      background-color: #4a5568;
+    }
+    .dark input, .dark select {
+      background-color: #374151;
+      border-color: #4a5568;
+      color: #e2e8f0;
+    }
+    .dark input:focus, .dark select:focus {
+      ring-color: #63b3ed;
+    }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-left-color: #63b3ed;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    button {
+      transition: all 0.3s ease;
+    }
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(99, 179, 237, 0.5);
+    }
+    #canvas.draggable { cursor: move; }
+    .layer-item {
+      transition: background-color 0.2s, transform 0.2s;
+    }
+    .layer-item:hover {
+      background-color: #4a5568 !important;
+      transform: translateX(5px);
+    }
+    .dark .layer-item:hover {
+      background-color: #718096 !important;
+    }
+    .glow {
+      box-shadow: 0 0 20px rgba(99, 179, 237, 0.4);
+      transition: box-shadow 0.3s ease;
+    }
+    .glow:hover {
+      box-shadow: 0 0 30px rgba(99, 179, 237, 0.6);
+    }
+    .modal {
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+    }
+    .modal-content {
+      background: #2d3748;
+      color: #e2e8f0;
+    }
+    input[type="range"] {
+      accent-color: #63b3ed;
+    }
+    .sidebar {
+      scrollbar-width: thin;
+      scrollbar-color: #4a5568 #2d3748;
+    }
+    .sidebar::-webkit-scrollbar {
+      width: 8px;
+    }
+    .sidebar::-webkit-scrollbar-track {
+      background: #2d3748;
+    }
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #4a5568;
+      border-radius: 4px;
+    }
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: #718096;
+    }
+  </style>
 </head>
-<body>
+<body class="dark flex items-center justify-center min-h-screen p-4">
+  <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col md:flex-row gap-6 glow">
+    <!-- Controls Sidebar -->
+    <div class="w-full md:w-1/3 space-y-4 overflow-y-auto max-h-screen sidebar">
+      <h1 class="text-3xl font-bold text-center text-blue-800 dark:text-blue-300">Ultimate Dark Image Text Editor</h1>
+      
+      <div>
+        <label for="imageInput" class="block text-sm font-medium">Upload Image or Enter URL:</label>
+        <input type="file" id="imageInput" accept="image/*" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-2">
+        <input type="url" id="imageUrl" placeholder="Enter image URL" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        <button id="loadImageBtn" class="mt-2 w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700">Load Image</button>
+      </div>
+      
+      <div class="space-y-2">
+        <label for="textInput" class="block text-sm font-medium">Text (Multi-line):</label>
+        <textarea id="textInput" placeholder="Enter text (supports multiple lines)" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white h-24 resize-y"></textarea>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="fontSize" class="block text-sm font-medium">Font Size (px):</label>
+          <input type="number" id="fontSize" value="30" min="10" max="200" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div>
+          <label for="textColor" class="block text-sm font-medium">Text Color:</label>
+          <input type="color" id="textColor" value="#ffffff" class="w-full h-10 p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+        </div>
+      </div>
+      
+      <div>
+        <label for="fontFamily" class="block text-sm font-medium">Font Family:</label>
+        <select id="fontFamily" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <option>Arial</option>
+          <option>Helvetica</option>
+          <option>Times New Roman</option>
+          <option>Courier New</option>
+          <option>Verdana</option>
+          <option>Georgia</option>
+          <option>Roboto</option>
+          <option>Open Sans</option>
+          <option>Lobster</option>
+          <option>Poppins</option>
+          <option>Montserrat</option>
+          <option>Oswald</option>
+          <option>Raleway</option>
+          <option>Playfair Display</option>
+          <option>Source Sans Pro</option>
+          <option>Ubuntu</option>
+          <option>Inter</option>
+          <option>Merriweather</option>
+          <option>Lato</option>
+          <option>Nunito</option>
+          <option>Bebas Neue</option>
+          <option>Inconsolata</option>
+        </select>
+      </div>
+      
+      <div class="grid grid-cols-3 gap-4">
+        <div class="flex items-center">
+          <input type="checkbox" id="bold" class="mr-2">
+          <label for="bold">Bold</label>
+        </div>
+        <div class="flex items-center">
+          <input type="checkbox" id="italic" class="mr-2">
+          <label for="italic">Italic</label>
+        </div>
+        <div class="flex items-center">
+          <input type="checkbox" id="underline" class="mr-2">
+          <label for="underline">Underline</label>
+        </div>
+      </div>
+      
+      <div>
+        <label for="alignment" class="block text-sm font-medium">Alignment:</label>
+        <select id="alignment" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <option value="center">Center</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+      
+      <div>
+        <label for="lineHeight" class="block text-sm font-medium">Line Height (%):</label>
+        <input type="number" id="lineHeight" value="120" min="50" max="200" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+      </div>
+      
+      <div>
+        <label for="opacity" class="block text-sm font-medium">Text Opacity (0-1):</label>
+        <input type="range" id="opacity" min="0" max="1" step="0.1" value="1" class="w-full">
+      </div>
+      
+      <div>
+        <label for="rotation" class="block text-sm font-medium">Rotation (degrees):</label>
+        <input type="number" id="rotation" value="0" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+      </div>
+      
+      <fieldset class="border p-4 rounded-md dark:border-gray-600">
+        <legend class="text-sm font-medium">Text Shadow</legend>
+        <div class="space-y-2">
+          <div class="flex items-center">
+            <input type="checkbox" id="shadowEnable" class="mr-2">
+            <label for="shadowEnable">Enable Shadow</label>
+          </div>
+          <div>
+            <label for="shadowColor" class="block text-sm">Color:</label>
+            <input type="color" id="shadowColor" value="#000000" class="w-full h-8 p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label for="shadowX" class="block text-sm">X Offset:</label>
+              <input type="number" id="shadowX" value="2" class="w-full p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+            <div>
+              <label for="shadowY" class="block text-sm">Y Offset:</label>
+              <input type="number" id="shadowY" value="2" class="w-full p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+            <div>
+              <label for="shadowBlur" class="block text-sm">Blur:</label>
+              <input type="number" id="shadowBlur" value="5" min="0" class="w-full p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+          </div>
+        </div>
+      </fieldset>
+      
+      <fieldset class="border p-4 rounded-md dark:border-gray-600">
+        <legend class="text-sm font-medium">Text Stroke</legend>
+        <div class="space-y-2">
+          <div class="flex items-center">
+            <input type="checkbox" id="strokeEnable" class="mr-2">
+            <label for="strokeEnable">Enable Stroke</label>
+          </div>
+          <div>
+            <label for="strokeColor" class="block text-sm">Color:</label>
+            <input type="color" id="strokeColor" value="#000000" class="w-full h-8 p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label for="strokeWidth" class="block text-sm">Width:</label>
+            <input type="number" id="strokeWidth" value="1" min="0" class="w-full p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          </div>
+        </div>
+      </fieldset>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="posX" class="block text-sm font-medium">Position X:</label>
+          <input type="number" id="posX" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div>
+          <label for="posY" class="block text-sm font-medium">Position Y:</label>
+          <input type="number" id="posY" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+      </div>
+      
+      <fieldset class="border p-4 rounded-md dark:border-gray-600">
+        <legend class="text-sm font-medium">Image Filters</legend>
+        <div class="space-y-2">
+          <div>
+            <label for="filterSelect" class="block text-sm">Filter:</label>
+            <select id="filterSelect" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <option value="none">None</option>
+              <option value="grayscale(100%)">Grayscale</option>
+              <option value="sepia(100%)">Sepia</option>
+              <option value="invert(100%)">Invert</option>
+              <option value="blur(5px)">Blur</option>
+              <option value="brightness(150%)">Brighten</option>
+              <option value="contrast(150%)">High Contrast</option>
+              <option value="hue-rotate(90deg)">Hue Rotate</option>
+              <option value="saturate(200%)">High Saturation</option>
+            </select>
+          </div>
+          <button id="applyFilterBtn" class="w-full bg-teal-500 text-white p-2 rounded-md hover:bg-teal-600">Apply Filter</button>
+        </div>
+      </fieldset>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <button id="undoBtn" class="w-full bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600">Undo (Ctrl+Z)</button>
+        <button id="redoBtn" class="w-full bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600">Redo (Ctrl+Y)</button>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <button id="addTextBtn" class="w-full bg-purple-500 text-white p-2 rounded-md hover:bg-purple-600">Add New Text</button>
+        <button id="updateTextBtn" class="w-full bg-indigo-500 text-white p-2 rounded-md hover:bg-indigo-600 hidden">Update Selected</button>
+      </div>
+      
+      <button id="previewBtn" class="w-full bg-cyan-500 text-white p-2 rounded-md hover:bg-cyan-600">Preview in New Tab</button>
+      <button id="resetBtn" class="w-full bg-red-500 text-white p-2 rounded-md hover:bg-red-600">Reset All</button>
+      <button id="helpBtn" class="w-full bg-gray-500 text-white p-2 rounded-md hover:bg-gray-600">Show Help</button>
+      
+      <div id="textLayers" class="space-y-2">
+        <h3 class="text-lg font-semibold">Text Layers</h3>
+        <ul id="layersList" class="space-y-1 max-h-60 overflow-y-auto"></ul>
+      </div>
+      
+      <div>
+        <label for="exportFormat" class="block text-sm font-medium">Export Format:</label>
+        <select id="exportFormat" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Canvas Area -->
+    <div class="relative w-full md:w-2/3">
+      <canvas id="canvas" class="w-full h-auto border-2 border-gray-300 dark:border-gray-600 rounded-md shadow-md hidden"></canvas>
+      <div id="loading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 dark:bg-gray-900 dark:bg-opacity-70 hidden">
+        <div class="spinner"></div>
+      </div>
+      <button id="saveBtn" class="mt-4 w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700 hidden">Save Image</button>
+    </div>
+  </div>
 
-<div id="sidebar">
-  <h2>Particle Settings</h2>
+  <!-- Help Modal -->
+  <div id="helpModal" class="fixed inset-0 hidden modal flex items-center justify-center z-50">
+    <div class="modal-content p-6 rounded-xl shadow-2xl max-w-lg w-full">
+      <h2 class="text-xl font-bold mb-4">Help & Shortcuts</h2>
+      <p class="mb-2">• Load an image via URL or file upload.</p>
+      <p class="mb-2">• Add text with customizable styles (font, size, color, etc.).</p>
+      <p class="mb-2">• Drag text by clicking/tapping and moving.</p>
+      <p class="mb-2">• Right-click canvas or use "Preview in New Tab" to view the result.</p>
+      <p class="mb-2">• Shortcuts:</p>
+      <ul class="list-disc pl-5 mb-4">
+        <li>Ctrl+Z: Undo</li>
+        <li>Ctrl+Y: Redo</li>
+        <li>Arrow Keys: Nudge selected text (hold Shift for larger steps)</li>
+        <li>Delete: Remove selected layer</li>
+      </ul>
+      <button id="closeHelpBtn" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700">Close</button>
+    </div>
+  </div>
 
-  <label for="quantity">Quantity</label>
-  <input id="quantity" type="range" min="100" max="5000" value="1000" step="100" />
+  <script>
+    const elements = {
+      imageInput: document.getElementById('imageInput'),
+      imageUrl: document.getElementById('imageUrl'),
+      loadImageBtn: document.getElementById('loadImageBtn'),
+      textInput: document.getElementById('textInput'),
+      fontSize: document.getElementById('fontSize'),
+      textColor: document.getElementById('textColor'),
+      fontFamily: document.getElementById('fontFamily'),
+      bold: document.getElementById('bold'),
+      italic: document.getElementById('italic'),
+      underline: document.getElementById('underline'),
+      alignment: document.getElementById('alignment'),
+      lineHeight: document.getElementById('lineHeight'),
+      opacity: document.getElementById('opacity'),
+      rotation: document.getElementById('rotation'),
+      shadowEnable: document.getElementById('shadowEnable'),
+      shadowColor: document.getElementById('shadowColor'),
+      shadowX: document.getElementById('shadowX'),
+      shadowY: document.getElementById('shadowY'),
+      shadowBlur: document.getElementById('shadowBlur'),
+      strokeEnable: document.getElementById('strokeEnable'),
+      strokeColor: document.getElementById('strokeColor'),
+      strokeWidth: document.getElementById('strokeWidth'),
+      posX: document.getElementById('posX'),
+      posY: document.getElementById('posY'),
+      filterSelect: document.getElementById('filterSelect'),
+      applyFilterBtn: document.getElementById('applyFilterBtn'),
+      undoBtn: document.getElementById('undoBtn'),
+      redoBtn: document.getElementById('redoBtn'),
+      addTextBtn: document.getElementById('addTextBtn'),
+      updateTextBtn: document.getElementById('updateTextBtn'),
+      previewBtn: document.getElementById('previewBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      helpBtn: document.getElementById('helpBtn'),
+      closeHelpBtn: document.getElementById('closeHelpBtn'),
+      canvas: document.getElementById('canvas'),
+      saveBtn: document.getElementById('saveBtn'),
+      exportFormat: document.getElementById('exportFormat'),
+      loading: document.getElementById('loading'),
+      layersList: document.getElementById('layersList'),
+      helpModal: document.getElementById('helpModal'),
+    };
+    const ctx = elements.canvas.getContext('2d');
+    let img = null;
+    let imageFilter = 'none';
+    let textLayers = [];
+    let history = [];
+    let redoStack = [];
+    let selectedId = null;
+    let hoverId = null;
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
 
-  <label for="size">Size</label>
-  <input id="size" type="range" min="1" max="20" value="5" />
+    function saveState() {
+      history.push({
+        textLayers: JSON.parse(JSON.stringify(textLayers)),
+        imageFilter
+      });
+      redoStack = [];
+      if (history.length > 20) history.shift();
+    }
 
-  <label for="speed">Speed</label>
-  <input id="speed" type="range" min="0" max="10" value="2" step="0.1" />
-
-  <label for="lifetime">Lifetime (seconds)</label>
-  <input id="lifetime" type="range" min="1" max="30" value="15" />
-
-  <label for="shape">Shape</label>
-  <select id="shape">
-    <option value="circle">Circle</option>
-    <option value="square">Square</option>
-    <option value="star">Star</option>
-  </select>
-
-  <label for="interaction">Interaction Mode</label>
-  <select id="interaction">
-    <option value="static">Static</option>
-    <option value="attract">Attract</option>
-    <option value="repel">Repel</option>
-    <option value="swirl">Swirl</option>
-  </select>
-
-  <label for="colorMode">Color Mode</label>
-  <select id="colorMode">
-    <option value="fixed">Fixed</option>
-    <option value="gradient">Gradient</option>
-    <option value="rainbow">Rainbow</option>
-  </select>
-
-  <label for="fixedColor">Fixed Color</label>
-  <input id="fixedColor" type="color" value="#00ffff" />
-
-  <label for="gradientStart">Gradient Start</label>
-  <input id="gradientStart" type="color" value="#00ffff" />
-
-  <label for="gradientEnd">Gradient End</label>
-  <input id="gradientEnd" type="color" value="#ff00ff" />
-
-  <button id="pauseBtn">Pause</button>
-  <button id="resetBtn">Reset</button>
-</div>
-
-<div id="canvas-container"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-
-<script>
-(() => {
-  // UI elements
-  const quantityInput = document.getElementById('quantity');
-  const sizeInput = document.getElementById('size');
-  const speedInput = document.getElementById('speed');
-  const lifetimeInput = document.getElementById('lifetime');
-  const shapeSelect = document.getElementById('shape');
-  const interactionSelect = document.getElementById('interaction');
-  const colorModeSelect = document.getElementById('colorMode');
-  const fixedColorInput = document.getElementById('fixedColor');
-  const gradientStartInput = document.getElementById('gradientStart');
-  const gradientEndInput = document.getElementById('gradientEnd');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const canvasContainer = document.getElementById('canvas-container');
-
-  // Scene setup
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/ window.innerHeight, 0.1, 2000);
-  camera.position.z = 400;
-
-  const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false});
-  renderer.setClearColor(0x121217);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  canvasContainer.appendChild(renderer.domElement);
-
-  // State vars
-  let particleCount = +quantityInput.value;
-  let particleSize = +sizeInput.value;
-  let particleSpeed = +speedInput.value;
-  let particleLifetime = +lifetimeInput.value;
-  let interactionMode = interactionSelect.value;
-  let colorMode = colorModeSelect.value;
-  let fixedColor = new THREE.Color(fixedColorInput.value);
-  let gradientStart = new THREE.Color(gradientStartInput.value);
-  let gradientEnd = new THREE.Color(gradientEndInput.value);
-  let paused = false;
-
-  // Particle data arrays
-  let positions, velocities, ages, colors;
-
-  // Particle system objects
-  let geometry, material, particles;
-
-  // Mouse state (relative to canvas center)
-  const mouse = { x: 0, y: 0 };
-
-  // Resize handler
-  function onResize() {
-    const width = window.innerWidth - 280; // leave sidebar
-    const height = window.innerHeight;
-    renderer.setSize(width, height);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-  }
-  window.addEventListener('resize', onResize);
-  onResize();
-
-  // Mouse move relative to canvas center
-  function onMouseMove(e) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    mouse.x = e.clientX - rect.left - (rect.width / 2);
-    mouse.y = - (e.clientY - rect.top - (rect.height / 2));
-  }
-  window.addEventListener('mousemove', onMouseMove);
-
-  // Create particle shape texture
-  function createParticleTexture(shape) {
-    const size = 64;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = 'white';
-
-    if(shape === 'circle') {
-      ctx.beginPath();
-      ctx.arc(size/2, size/2, size/3, 0, Math.PI * 2);
-      ctx.fill();
-    } else if(shape === 'square') {
-      const s = size * 0.6;
-      ctx.fillRect((size - s) / 2, (size - s) / 2, s, s);
-    } else if(shape === 'star') {
-      const cx = size / 2;
-      const cy = size / 2;
-      const spikes = 5;
-      const outerRadius = size / 3;
-      const innerRadius = size / 6;
-      let rot = Math.PI / 2 * 3;
-      const step = Math.PI / spikes;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - outerRadius);
-      for (let i = 0; i < spikes; i++) {
-        const x = cx + Math.cos(rot) * outerRadius;
-        const y = cy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-        const x2 = cx + Math.cos(rot) * innerRadius;
-        const y2 = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x2, y2);
-        rot += step;
+    function undo() {
+      if (history.length > 0) {
+        redoStack.push({
+          textLayers: JSON.parse(JSON.stringify(textLayers)),
+          imageFilter
+        });
+        const state = history.pop();
+        textLayers = state.textLayers;
+        imageFilter = state.imageFilter;
+        updateLayersList();
+        drawCanvas();
       }
-      ctx.closePath();
-      ctx.fill();
-    }
-    return new THREE.CanvasTexture(canvas);
-  }
-
-  // Initialize particles
-  function initParticles() {
-    particleCount = +quantityInput.value;
-    particleSize = +sizeInput.value;
-    particleSpeed = +speedInput.value;
-    particleLifetime = +lifetimeInput.value;
-    interactionMode = interactionSelect.value;
-    colorMode = colorModeSelect.value;
-    fixedColor.set(fixedColorInput.value);
-    gradientStart.set(gradientStartInput.value);
-    gradientEnd.set(gradientEndInput.value);
-
-    positions = new Float32Array(particleCount * 3);
-    velocities = new Float32Array(particleCount * 3);
-    ages = new Float32Array(particleCount);
-    colors = new Float32Array(particleCount * 3);
-
-    const width = window.innerWidth - 280;
-    const height = window.innerHeight;
-
-    for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * width;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * height;
-      positions[i * 3 + 2] = 0;
-
-      velocities[i * 3] = (Math.random() - 0.5) * particleSpeed;
-      velocities[i * 3 + 1] = (Math.random() - 0.5) * particleSpeed;
-      velocities[i * 3 + 2] = 0;
-
-      ages[i] = Math.random() * particleLifetime;
-
-      colors[i * 3] = fixedColor.r;
-      colors[i * 3 + 1] = fixedColor.g;
-      colors[i * 3 + 2] = fixedColor.b;
     }
 
-    if (particles) {
-      scene.remove(particles);
-      geometry.dispose();
-      material.dispose();
+    function redo() {
+      if (redoStack.length > 0) {
+        history.push({
+          textLayers: JSON.parse(JSON.stringify(textLayers)),
+          imageFilter
+        });
+        const state = redoStack.pop();
+        textLayers = state.textLayers;
+        imageFilter = state.imageFilter;
+        updateLayersList();
+        drawCanvas();
+      }
     }
 
-    geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    function drawCanvas() {
+      ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+      if (img) {
+        ctx.filter = imageFilter;
+        ctx.drawImage(img, 0, 0);
+        ctx.filter = 'none';
+      }
+      textLayers.forEach(layer => {
+        ctx.save();
+        ctx.translate(layer.x, layer.y);
+        ctx.rotate(layer.rotation * Math.PI / 180);
+        const fontStyle = `${layer.italic ? 'italic ' : ''}${layer.bold ? 'bold ' : ''}${layer.fontSize}px ${layer.fontFamily}`;
+        ctx.font = fontStyle;
+        ctx.fillStyle = layer.color;
+        ctx.globalAlpha = layer.opacity;
+        ctx.textAlign = layer.align;
+        ctx.textBaseline = 'middle';
+        if (layer.shadow.enabled) {
+          ctx.shadowColor = layer.shadow.color;
+          ctx.shadowOffsetX = layer.shadow.x;
+          ctx.shadowOffsetY = layer.shadow.y;
+          ctx.shadowBlur = layer.shadow.blur;
+        }
+        if (layer.stroke.enabled) {
+          ctx.strokeStyle = layer.stroke.color;
+          ctx.lineWidth = layer.stroke.width;
+        }
+        const lines = layer.text.split('\n');
+        const lineHeight = layer.fontSize * (layer.lineHeight / 100);
+        let totalHeight = lines.length * lineHeight;
+        let startY = -totalHeight / 2 + lineHeight / 2;
+        lines.forEach((line, index) => {
+          if (layer.stroke.enabled) ctx.strokeText(line, 0, startY + index * lineHeight);
+          ctx.fillText(line, 0, startY + index * lineHeight);
+          if (layer.underline) {
+            const metrics = ctx.measureText(line);
+            let width = metrics.width;
+            ctx.beginPath();
+            let offsetX = 0;
+            if (layer.align === 'center') offsetX = -width / 2;
+            else if (layer.align === 'right') offsetX = -width;
+            ctx.moveTo(offsetX, startY + index * lineHeight + layer.fontSize / 2);
+            ctx.lineTo(offsetX + width, startY + index * lineHeight + layer.fontSize / 2);
+            ctx.strokeStyle = layer.color;
+            ctx.lineWidth = layer.fontSize / 20;
+            ctx.stroke();
+          }
+        });
+        ctx.globalAlpha = 1;
 
-    material = new THREE.PointsMaterial({
-      size: particleSize,
-      vertexColors: true,
-      map: createParticleTexture(shapeSelect.value),
-      transparent: true,
-      alphaTest: 0.1,
-      depthWrite: false,
-      sizeAttenuation: true,
+        // Bounding box
+        let maxWidth = 0;
+        lines.forEach(line => {
+          const metrics = ctx.measureText(line);
+          maxWidth = Math.max(maxWidth, metrics.width);
+        });
+        let height = totalHeight;
+        if (lines.length === 1 && 'actualBoundingBoxAscent' in ctx.measureText(lines[0])) {
+          height = ctx.measureText(lines[0]).actualBoundingBoxAscent + ctx.measureText(lines[0]).actualBoundingBoxDescent;
+        }
+        let offsetX = 0;
+        if (layer.align === 'center') offsetX = -maxWidth / 2;
+        else if (layer.align === 'right') offsetX = -maxWidth;
+        if (layer.id === selectedId || layer.id === hoverId) {
+          ctx.strokeStyle = 'cyan';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.strokeRect(offsetX, -totalHeight / 2, maxWidth, height);
+        }
+        ctx.restore();
+      });
+    }
+
+    function getMousePos(e) {
+      const rect = elements.canvas.getBoundingClientRect();
+      const scaleX = elements.canvas.width / rect.width;
+      const scaleY = elements.canvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function getTouchPos(e) {
+      const rect = elements.canvas.getBoundingClientRect();
+      const scaleX = elements.canvas.width / rect.width;
+      const scaleY = elements.canvas.height / rect.height;
+      const touch = e.touches[0];
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY
+      };
+    }
+
+    function isPointOverLayer(pos, layer) {
+      const matrix = new DOMMatrix();
+      matrix.translateSelf(layer.x, layer.y);
+      matrix.rotateSelf(layer.rotation);
+      const inverse = matrix.invertSelf();
+      const point = new DOMPoint(pos.x, pos.y);
+      const relPoint = inverse.transformPoint(point);
+
+      ctx.font = `${layer.italic ? 'italic ' : ''}${layer.bold ? 'bold ' : ''}${layer.fontSize}px ${layer.fontFamily}`;
+      const lines = layer.text.split('\n');
+      let maxWidth = 0;
+      lines.forEach(line => {
+        maxWidth = Math.max(maxWidth, ctx.measureText(line).width);
+      });
+      const lineHeight = layer.fontSize * (layer.lineHeight / 100);
+      let height = lines.length * lineHeight;
+      if (lines.length === 1 && 'actualBoundingBoxAscent' in ctx.measureText(lines[0])) {
+        height = ctx.measureText(lines[0]).actualBoundingBoxAscent + ctx.measureText(lines[0]).actualBoundingBoxDescent;
+      }
+      let left = 0;
+      if (layer.align === 'center') left = -maxWidth / 2;
+      else if (layer.align === 'right') left = -maxWidth;
+      const top = -height / 2;
+      return relPoint.x >= left && relPoint.x <= left + maxWidth &&
+             relPoint.y >= top && relPoint.y <= top + height;
+    }
+
+    function updateLayersList() {
+      elements.layersList.innerHTML = '';
+      textLayers.forEach((layer, index) => {
+        const li = document.createElement('li');
+        li.className = 'layer-item flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded-md';
+        li.innerHTML = `
+          <span class="truncate w-1/2">${layer.text.replace(/\n/g, '⏎')}</span>
+          <div class="flex space-x-2">
+            <button class="text-blue-500 hover:underline select-layer" data-id="${layer.id}">Select</button>
+            <button class="text-red-500 hover:underline delete-layer" data-id="${layer.id}">Delete</button>
+            <button class="text-green-500 hover:underline up-layer" data-index="${index}">↑</button>
+            <button class="text-green-500 hover:underline down-layer" data-index="${index}">↓</button>
+          </div>
+        `;
+        elements.layersList.appendChild(li);
+      });
+      document.querySelectorAll('.select-layer').forEach(btn => {
+        btn.addEventListener('click', () => selectLayer(parseInt(btn.dataset.id)));
+      });
+      document.querySelectorAll('.delete-layer').forEach(btn => {
+        btn.addEventListener('click', () => deleteLayer(parseInt(btn.dataset.id)));
+      });
+      document.querySelectorAll('.up-layer').forEach(btn => {
+        btn.addEventListener('click', () => moveLayer(parseInt(btn.dataset.index), -1));
+      });
+      document.querySelectorAll('.down-layer').forEach(btn => {
+        btn.addEventListener('click', () => moveLayer(parseInt(btn.dataset.index), 1));
+      });
+    }
+
+    function moveLayer(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex >= 0 && newIndex < textLayers.length) {
+        [textLayers[index], textLayers[newIndex]] = [textLayers[newIndex], textLayers[index]];
+        saveState();
+        updateLayersList();
+        drawCanvas();
+      }
+    }
+
+    function selectLayer(id) {
+      selectedId = id;
+      const layer = textLayers.find(l => l.id === id);
+      if (layer) {
+        elements.textInput.value = layer.text;
+        elements.fontSize.value = layer.fontSize;
+        elements.textColor.value = layer.color;
+        elements.fontFamily.value = layer.fontFamily;
+        elements.bold.checked = layer.bold;
+        elements.italic.checked = layer.italic;
+        elements.underline.checked = layer.underline;
+        elements.alignment.value = layer.align;
+        elements.lineHeight.value = layer.lineHeight;
+        elements.opacity.value = layer.opacity;
+        elements.rotation.value = layer.rotation;
+        elements.shadowEnable.checked = layer.shadow.enabled;
+        elements.shadowColor.value = layer.shadow.color;
+        elements.shadowX.value = layer.shadow.x;
+        elements.shadowY.value = layer.shadow.y;
+        elements.shadowBlur.value = layer.shadow.blur;
+        elements.strokeEnable.checked = layer.stroke.enabled;
+        elements.strokeColor.value = layer.stroke.color;
+        elements.strokeWidth.value = layer.stroke.width;
+        elements.posX.value = Math.round(layer.x);
+        elements.posY.value = Math.round(layer.y);
+        elements.updateTextBtn.classList.remove('hidden');
+        drawCanvas();
+      }
+    }
+
+    function deleteLayer(id) {
+      textLayers = textLayers.filter(l => l.id !== id);
+      if (selectedId === id) selectedId = null;
+      saveState();
+      updateLayersList();
+      drawCanvas();
+      if (!selectedId) elements.updateTextBtn.classList.add('hidden');
+    }
+
+    function openPreview() {
+      const dataUrl = elements.canvas.toDataURL('image/png');
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <title>Preview</title>
+            <style>
+              body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1a202c; }
+              img { max-width: 100%; height: auto; }
+            </style>
+          </head>
+          <body>
+            <img src="${dataUrl}" alt="Edited Image">
+          </body>
+          </html>
+        `);
+        newWindow.document.close();
+      } else {
+        alert('Failed to open preview. Please allow popups for this site.');
+      }
+    }
+
+    // Event Listeners for Inputs
+    const updateInputs = ['textInput', 'fontSize', 'textColor', 'fontFamily', 'bold', 'italic', 'underline', 'alignment', 'lineHeight', 'opacity', 'rotation', 'shadowEnable', 'shadowColor', 'shadowX', 'shadowY', 'shadowBlur', 'strokeEnable', 'strokeColor', 'strokeWidth', 'posX', 'posY'];
+    updateInputs.forEach(key => {
+      elements[key].addEventListener(key === 'bold' || key === 'italic' || key === 'underline' || key === 'shadowEnable' || key === 'strokeEnable' ? 'change' : 'input', () => {
+        if (selectedId !== null) {
+          const layer = textLayers.find(l => l.id === selectedId);
+          if (layer) {
+            layer.text = elements.textInput.value;
+            layer.fontSize = parseInt(elements.fontSize.value) || 30;
+            layer.color = elements.textColor.value;
+            layer.fontFamily = elements.fontFamily.value;
+            layer.bold = elements.bold.checked;
+            layer.italic = elements.italic.checked;
+            layer.underline = elements.underline.checked;
+            layer.align = elements.alignment.value;
+            layer.lineHeight = parseFloat(elements.lineHeight.value) || 120;
+            layer.opacity = parseFloat(elements.opacity.value) || 1;
+            layer.rotation = parseFloat(elements.rotation.value) || 0;
+            layer.shadow.enabled = elements.shadowEnable.checked;
+            layer.shadow.color = elements.shadowColor.value;
+            layer.shadow.x = parseFloat(elements.shadowX.value) || 0;
+            layer.shadow.y = parseFloat(elements.shadowY.value) || 0;
+            layer.shadow.blur = parseFloat(elements.shadowBlur.value) || 0;
+            layer.stroke.enabled = elements.strokeEnable.checked;
+            layer.stroke.color = elements.strokeColor.value;
+            layer.stroke.width = parseFloat(elements.strokeWidth.value) || 1;
+            layer.x = parseFloat(elements.posX.value) || layer.x;
+            layer.y = parseFloat(elements.posY.value) || layer.y;
+            drawCanvas();
+          }
+        }
+      });
     });
 
-    particles = new THREE.Points(geometry, material);
-    scene.add(particles);
-  }
-
-  // Update colors based on mode and time
-  function updateColors(time) {
-    if (colorMode === 'fixed') {
-      for (let i = 0; i < particleCount; i++) {
-        colors[i * 3] = fixedColor.r;
-        colors[i * 3 + 1] = fixedColor.g;
-        colors[i * 3 + 2] = fixedColor.b;
+    elements.imageInput.addEventListener('change', () => {
+      const file = elements.imageInput.files[0];
+      if (file) {
+        elements.loading.classList.remove('hidden');
+        img = new Image();
+        img.onload = () => {
+          elements.canvas.width = img.width;
+          elements.canvas.height = img.height;
+          textLayers.forEach(layer => {
+            if (layer.x === 0) layer.x = elements.canvas.width / 2;
+            if (layer.y === 0) layer.y = elements.canvas.height / 2;
+          });
+          saveState();
+          drawCanvas();
+          elements.canvas.classList.remove('hidden');
+          elements.saveBtn.classList.remove('hidden');
+          elements.loading.classList.add('hidden');
+        };
+        img.onerror = () => {
+          alert('Failed to load image.');
+          elements.loading.classList.add('hidden');
+        };
+        img.src = URL.createObjectURL(file);
       }
-    } else if (colorMode === 'gradient') {
-      const height = window.innerHeight;
-      for (let i = 0; i < particleCount; i++) {
-        const yNorm = (positions[i * 3 + 1] + height / 2) / height;
-        colors[i * 3] = THREE.MathUtils.lerp(gradientStart.r, gradientEnd.r, yNorm);
-        colors[i * 3 + 1] = THREE.MathUtils.lerp(gradientStart.g, gradientEnd.g, yNorm);
-        colors[i * 3 + 2] = THREE.MathUtils.lerp(gradientStart.b, gradientEnd.b, yNorm);
+    });
+
+    elements.loadImageBtn.addEventListener('click', () => {
+      if (!elements.imageUrl.value) return alert('Enter a valid image URL!');
+      elements.loading.classList.remove('hidden');
+      img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        elements.canvas.width = img.width;
+        elements.canvas.height = img.height;
+        textLayers.forEach(layer => {
+          if (layer.x === 0) layer.x = elements.canvas.width / 2;
+          if (layer.y === 0) layer.y = elements.canvas.height / 2;
+        });
+        saveState();
+        drawCanvas();
+        elements.canvas.classList.remove('hidden');
+        elements.saveBtn.classList.remove('hidden');
+        elements.loading.classList.add('hidden');
+      };
+      img.onerror = () => {
+        alert('Failed to load image.');
+        elements.loading.classList.add('hidden');
+      };
+      img.src = elements.imageUrl.value;
+    });
+
+    elements.addTextBtn.addEventListener('click', () => {
+      if (!img) return alert('Load an image first!');
+      const newLayer = {
+        id: Date.now(),
+        text: elements.textInput.value || 'New Text',
+        x: elements.canvas.width / 2,
+        y: elements.canvas.height / 2,
+        fontSize: parseInt(elements.fontSize.value) || 30,
+        color: elements.textColor.value,
+        fontFamily: elements.fontFamily.value,
+        bold: elements.bold.checked,
+        italic: elements.italic.checked,
+        underline: elements.underline.checked,
+        align: elements.alignment.value,
+        lineHeight: parseFloat(elements.lineHeight.value) || 120,
+        opacity: parseFloat(elements.opacity.value) || 1,
+        rotation: parseFloat(elements.rotation.value) || 0,
+        shadow: {
+          enabled: elements.shadowEnable.checked,
+          color: elements.shadowColor.value,
+          x: parseFloat(elements.shadowX.value) || 0,
+          y: parseFloat(elements.shadowY.value) || 0,
+          blur: parseFloat(elements.shadowBlur.value) || 0
+        },
+        stroke: {
+          enabled: elements.strokeEnable.checked,
+          color: elements.strokeColor.value,
+          width: parseFloat(elements.strokeWidth.value) || 1
+        }
+      };
+      textLayers.push(newLayer);
+      saveState();
+      selectLayer(newLayer.id);
+      updateLayersList();
+      drawCanvas();
+    });
+
+    elements.updateTextBtn.addEventListener('click', () => {
+      if (selectedId !== null) {
+        saveState();
+        drawCanvas();
       }
-    } else if (colorMode === 'rainbow') {
-      for (let i = 0; i < particleCount; i++) {
-        const hue = ((time * 0.1) + i / particleCount) % 1;
-        const color = new THREE.Color();
-        color.setHSL(hue, 1, 0.5);
-        colors[i * 3] = color.r;
-        colors[i * 3 + 1] = color.g;
-        colors[i * 3 + 2] = color.b;
-      }
-    }
-    geometry.attributes.color.needsUpdate = true;
-  }
+    });
 
-  // Particle update
-  function updateParticles(delta) {
-    const width = window.innerWidth - 280;
-    const height = window.innerHeight;
+    elements.previewBtn.addEventListener('click', openPreview);
 
-    for (let i = 0; i < particleCount; i++) {
-      ages[i] += delta;
-      if (ages[i] > particleLifetime) {
-        // Respawn
-        positions[i * 3] = (Math.random() - 0.5) * width;
-        positions[i * 3 + 1] = (Math.random() - 0.5) * height;
-        velocities[i * 3] = (Math.random() - 0.5) * particleSpeed;
-        velocities[i * 3 + 1] = (Math.random() - 0.5) * particleSpeed;
-        ages[i] = 0;
-      }
+    elements.resetBtn.addEventListener('click', () => {
+      textLayers = [];
+      selectedId = null;
+      imageFilter = 'none';
+      saveState();
+      updateLayersList();
+      drawCanvas();
+      elements.updateTextBtn.classList.add('hidden');
+    });
 
-      const dx = mouse.x - positions[i * 3];
-      const dy = mouse.y - positions[i * 3 + 1];
-      const dist = Math.sqrt(dx * dx + dy * dy);
+    elements.saveBtn.addEventListener('click', () => {
+      const format = elements.exportFormat.value;
+      const mime = `image/${format}`;
+      const link = document.createElement('a');
+      link.download = `edited-image.${format}`;
+      link.href = elements.canvas.toDataURL(mime, format === 'jpeg' ? 0.9 : 1);
+      link.click();
+    });
 
-      if (interactionMode !== 'static' && dist < 150 && dist > 0) {
-        const nx = dx / dist;
-        const ny = dy / dist;
+    elements.applyFilterBtn.addEventListener('click', () => {
+      imageFilter = elements.filterSelect.value;
+      saveState();
+      drawCanvas();
+    });
 
-        switch (interactionMode) {
-          case 'attract':
-            velocities[i * 3] += nx * delta * 50;
-            velocities[i * 3 + 1] += ny * delta * 50;
+    elements.undoBtn.addEventListener('click', undo);
+    elements.redoBtn.addEventListener('click', redo);
+
+    elements.helpBtn.addEventListener('click', () => {
+      elements.helpModal.classList.remove('hidden');
+    });
+
+    elements.closeHelpBtn.addEventListener('click', () => {
+      elements.helpModal.classList.add('hidden');
+    });
+
+    // Mouse Events
+    elements.canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openPreview();
+    });
+
+    elements.canvas.addEventListener('mousemove', (e) => {
+      const pos = getMousePos(e);
+      let over = false;
+      hoverId = null;
+      if (!isDragging) {
+        for (let i = textLayers.length - 1; i >= 0; i--) {
+          if (isPointOverLayer(pos, textLayers[i])) {
+            hoverId = textLayers[i].id;
+            over = true;
             break;
-          case 'repel':
-            velocities[i * 3] -= nx * delta * 50;
-            velocities[i * 3 + 1] -= ny * delta * 50;
-            break;
-          case 'swirl':
-            velocities[i * 3] += ny * delta * 50;
-            velocities[i * 3 + 1] -= nx * delta * 50;
-            break;
+          }
         }
       }
+      elements.canvas.classList.toggle('draggable', over || isDragging);
+      if (isDragging) {
+        const layer = textLayers.find(l => l.id === selectedId);
+        if (layer) {
+          layer.x = pos.x - dragOffsetX;
+          layer.y = pos.y - dragOffsetY;
+          elements.posX.value = Math.round(layer.x);
+          elements.posY.value = Math.round(layer.y);
+          drawCanvas();
+        }
+      } else if (over) {
+        drawCanvas();
+      }
+    });
 
-      velocities[i * 3] *= 0.95;
-      velocities[i * 3 + 1] *= 0.95;
+    elements.canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        const pos = getMousePos(e);
+        for (let i = textLayers.length - 1; i >= 0; i--) {
+          if (isPointOverLayer(pos, textLayers[i])) {
+            selectedId = textLayers[i].id;
+            selectLayer(selectedId);
+            isDragging = true;
+            dragOffsetX = pos.x - textLayers[i].x;
+            dragOffsetY = pos.y - textLayers[i].y;
+            break;
+          }
+        }
+      }
+    });
 
-      positions[i * 3] += velocities[i * 3] * delta * 60;
-      positions[i * 3 + 1] += velocities[i * 3 + 1] * delta * 60;
+    elements.canvas.addEventListener('mouseup', () => {
+      if (isDragging) {
+        saveState();
+        isDragging = false;
+      }
+    });
 
-      if (positions[i * 3] < -width / 2) positions[i * 3] += width;
-      if (positions[i * 3] > width / 2) positions[i * 3] -= width;
-      if (positions[i * 3 + 1] < -height / 2) positions[i * 3 + 1] += height;
-      if (positions[i * 3 + 1] > height / 2) positions[i * 3 + 1] -= height;
-    }
-    geometry.attributes.position.needsUpdate = true;
-  }
+    elements.canvas.addEventListener('mouseleave', () => {
+      isDragging = false;
+      hoverId = null;
+      drawCanvas();
+    });
 
-  // Animation loop
-  let lastTime = performance.now();
+    // Touch Events
+    elements.canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const pos = getTouchPos(e);
+      for (let i = textLayers.length - 1; i >= 0; i--) {
+        if (isPointOverLayer(pos, textLayers[i])) {
+          selectedId = textLayers[i].id;
+          selectLayer(selectedId);
+          isDragging = true;
+          dragOffsetX = pos.x - textLayers[i].x;
+          dragOffsetY = pos.y - textLayers[i].y;
+          break;
+        }
+      }
+    });
 
-  function animate() {
-    if (!paused) {
-      const now = performance.now();
-      const delta = (now - lastTime) / 1000;
-      lastTime = now;
+    elements.canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const pos = getTouchPos(e);
+      if (isDragging) {
+        const layer = textLayers.find(l => l.id === selectedId);
+        if (layer) {
+          layer.x = pos.x - dragOffsetX;
+          layer.y = pos.y - dragOffsetY;
+          elements.posX.value = Math.round(layer.x);
+          elements.posY.value = Math.round(layer.y);
+          drawCanvas();
+        }
+      }
+    });
 
-      updateParticles(delta);
-      updateColors(now / 1000);
-      renderer.render(scene, camera);
-    }
-    requestAnimationFrame(animate);
-  }
+    elements.canvas.addEventListener('touchend', () => {
+      if (isDragging) {
+        saveState();
+        isDragging = false;
+      }
+    });
 
-  // UI event bindings
-  quantityInput.addEventListener('input', initParticles);
-  sizeInput.addEventListener('input', () => {
-    particleSize = +sizeInput.value;
-    if (material) material.size = particleSize;
-  });
-  speedInput.addEventListener('input', () => {
-    particleSpeed = +speedInput.value;
-  });
-  lifetimeInput.addEventListener('input', () => {
-    particleLifetime = +lifetimeInput.value;
-  });
-  interactionSelect.addEventListener('change', () => {
-    interactionMode = interactionSelect.value;
-  });
-  colorModeSelect.addEventListener('change', () => {
-    colorMode = colorModeSelect.value;
-  });
-  fixedColorInput.addEventListener('input', () => {
-    fixedColor.set(fixedColorInput.value);
-  });
-  gradientStartInput.addEventListener('input', () => {
-    gradientStart.set(gradientStartInput.value);
-  });
-  gradientEndInput.addEventListener('input', () => {
-    gradientEnd.set(gradientEndInput.value);
-  });
-  shapeSelect.addEventListener('change', () => {
-    if (material) {
-      material.map = createParticleTexture(shapeSelect.value);
-      material.needsUpdate = true;
-    }
-  });
-  pauseBtn.addEventListener('click', () => {
-    paused = !paused;
-    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
-  });
-  resetBtn.addEventListener('click', () => {
-    initParticles();
-  });
-
-  // Init & start animation
-  initParticles();
-  animate();
-
-})();
-</script>
-
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      } else if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      } else if (selectedId !== null && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        const layer = textLayers.find(l => l.id === selectedId);
+        if (layer) {
+          const step = e.shiftKey ? 10 : 1;
+          if (e.key === 'ArrowUp') layer.y -= step;
+          else if (e.key === 'ArrowDown') layer.y += step;
+          else if (e.key === 'ArrowLeft') layer.x -= step;
+          else if (e.key === 'ArrowRight') layer.x += step;
+          elements.posX.value = Math.round(layer.x);
+          elements.posY.value = Math.round(layer.y);
+          saveState();
+          drawCanvas();
+        }
+      } else if (e.key === 'Delete' && selectedId !== null) {
+        e.preventDefault();
+        deleteLayer(selectedId);
+      }
+    });
+  </script>
 </body>
 </html>
